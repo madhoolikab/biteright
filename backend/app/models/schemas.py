@@ -229,6 +229,34 @@ class DashboardResponse(BaseModel):
     water_target_ml: int
     meals: list[MealSlotSummary]
     today_weight: Optional[WeightLogResponse] = None
+    current_streak: int = 0
+
+
+# --- History ---
+
+class HistoryTargets(BaseModel):
+    calorie_target: int
+    protein_target_g: int
+    carbs_target_g: int
+    fat_target_g: int
+    fibre_target_g: int
+    water_target_ml: int = 2500
+
+
+class DaySummary(BaseModel):
+    log_date: date
+    total_calories: float
+    total_protein_g: float
+    total_carbs_g: float
+    total_fat_g: float
+    total_fibre_g: float
+    water_ml: int
+    weight_kg: Optional[float] = None
+
+
+class HistoryResponse(BaseModel):
+    targets: HistoryTargets
+    days: list[DaySummary]
 
 
 # --- Insights ---

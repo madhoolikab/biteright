@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { format } from 'date-fns'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
 import { useDailyLogStore } from '../store/dailyLogStore'
@@ -36,6 +37,9 @@ export default function MealLog() {
   const today = useToday()
   const { logMealItems } = useDailyLogStore()
   const { profile, updateProfile } = useProfileStore()
+
+  const targetDate = searchParams.get('date') || today
+  const afterLog = () => navigate(targetDate === today ? '/' : `/history/${targetDate}`)
 
   const [tab, setTab] = useState<Tab>('photo')
   const [mealType, setMealType] = useState(searchParams.get('meal') || 'breakfast')
@@ -174,7 +178,7 @@ export default function MealLog() {
   const confirmAnalyzed = async () => {
     const source = photoBase64 ? 'photo' : usedVoice ? 'voice' : 'text'
     await logMealItems(items.map((item) => ({
-      log_date: today,
+      log_date: targetDate,
       meal_type: mealType,
       item_name: item.item_name,
       calories: item.calories,
@@ -192,12 +196,12 @@ export default function MealLog() {
       is_estimate: true,
       source,
     })))
-    navigate('/')
+    afterLog()
   }
 
   const relogItem = async (item: FavouriteItem) => {
     await logMealItems([{
-      log_date: today,
+      log_date: targetDate,
       meal_type: mealType,
       item_name: item.item_name,
       calories: item.calories,
@@ -207,7 +211,7 @@ export default function MealLog() {
       fibre_g: item.fibre_g ?? undefined,
       source: 'favourite',
     }])
-    navigate('/')
+    afterLog()
   }
 
   const resetAnalysis = () => {
@@ -248,6 +252,11 @@ export default function MealLog() {
           </svg>
         </button>
         <h1 className="font-display text-2xl text-foreground">Log Meal</h1>
+        {targetDate !== today && (
+          <span className="ml-auto rounded-full bg-warning-soft px-3 py-1 text-[11px] font-semibold text-foreground border border-warning/20">
+            {format(new Date(`${targetDate}T00:00:00`), 'EEE, MMM d')}
+          </span>
+        )}
       </div>
 
       {/* Meal type selector */}

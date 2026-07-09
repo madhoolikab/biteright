@@ -80,6 +80,41 @@ async def get_water_today(
     return WaterResponse(total_ml=total)
 
 
+@router.delete("/")
+async def remove_last_glass(
+    log_date: date,
+    user_id: str = Depends(get_current_user),
+    db: Client = Depends(get_supabase),
+):
+    """Remove the most-recent glass logged on a given date (used when editing past days)."""
+    latest = (
+        db.table("water_logs")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("log_date", str(log_date))
+        .order("logged_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not latest.data:
+        return {"status": "empty"}
+
+    db.table("water_logs").delete().eq("id", latest.data[0]["id"]).eq(
+        "user_id", user_id
+    ).execute()
+    _update_daily_water(db, user_id, log_date)
+
+    result = (
+        db.table("water_logs")
+        .select("amount_ml")
+        .eq("user_id", user_id)
+        .eq("log_date", str(log_date))
+        .execute()
+    )
+    total = sum(w["amount_ml"] for w in result.data)
+    return {"status": "deleted", "total_ml": total}
+
+
 @router.delete("/{log_id}")
 async def undo_water(
     log_id: str,
