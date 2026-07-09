@@ -101,7 +101,13 @@ export default function Onboarding() {
   }
 
   const finish = async () => {
-    await createProfile(data as OnboardingData)
+    // oil_usage_level / portion_calibration are populated progressively
+    // during meal logging, not collected during onboarding
+    await createProfile({
+      ...(data as OnboardingData),
+      oil_usage_level: null,
+      portion_calibration: null,
+    })
     setOnboarded(true)
     navigate('/')
   }
