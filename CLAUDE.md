@@ -223,6 +223,17 @@ eval/
 
 ## Commands
 
+### Makefile shortcuts (run from repo root)
+```bash
+make dev       # frontend + backend together (Ctrl+C stops both)
+make backend   # backend only  → http://localhost:8000
+make frontend  # frontend only → http://localhost:5173
+make eval      # eval tool     → http://localhost:8100
+make install   # npm install + pip install for both
+```
+Backend targets expect `backend/.venv` to exist (`python3 -m venv backend/.venv`) — if it was created under a different path/folder name, its shebangs break; recreate it if `uvicorn`/`pip` stop resolving inside it.
+
+### Original commands
 ```bash
 # Frontend
 cd frontend && npm install && npm run dev
