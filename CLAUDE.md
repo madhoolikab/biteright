@@ -12,8 +12,9 @@ A personal nutrition tracking web app that productizes a real Claude conversatio
 | Backend | FastAPI, Pydantic v2, pydantic-settings, Supabase Python SDK |
 | Database | Supabase (PostgreSQL + Google Auth) |
 | AI — meal photos | Google Gemini Flash (`gemini-2.0-flash`) — Indian cuisine specialization |
-| AI — weekly insights | Google Gemini Flash (`gemini-2.0-flash`, max_tokens=200, temp=0.7) |
 | Deploy target | Vercel (frontend) + Railway (backend) |
+
+> **Dormant feature:** the AI weekly-insight generator (Gemini Flash, `gemini-2.0-flash`, max_tokens=200, temp=0.7) still exists in `insights.py` / `gemini_service.py` but is **no longer surfaced in the UI** — the old Insights tab was replaced by the **Log** (history) view. The endpoint and prompt are kept for possible reuse; nothing in the frontend calls `/insights/weekly`.
 
 ## Dev environment
 
@@ -35,14 +36,14 @@ backend/
       schemas.py       — all Pydantic request/response models
     routers/
       profile.py       — GET/POST/PUT profile, POST calculate-targets
-      dashboard.py     — GET /today — single aggregated endpoint (avoids N+1 calls)
-      meals.py         — POST /analyze, CRUD meals, favourites, recents
-      water.py         — POST (add 250ml), GET /today, DELETE /{id}
-      weight.py        — POST (log + EMA smoothing), GET /history, GET /today
-      insights.py      — GET /weekly (cached, generates via Gemini API)
+      dashboard.py     — GET /today (aggregated, avoids N+1; includes current_streak), GET /history (past-day summaries for the Log view)
+      meals.py         — POST /analyze, CRUD meals (incl. PUT /{id} for editing logged items), favourites, recents
+      water.py         — POST (add 250ml), GET /today, DELETE /{id}, DELETE /?log_date= (remove latest glass on a past day)
+      weight.py        — POST (log + EMA smoothing, upserts per date), GET /history, GET /today
+      insights.py      — GET /weekly (DORMANT — cached Gemini generation, no longer called by the frontend)
     services/
       nutrition_calc.py — Mifflin-St Jeor BMR, activity multipliers, macro splits, weeks_to_goal
-      gemini_service.py — unified photo+text meal analysis (quantity/unit/calorie range/clarifying questions), refine_meal_analysis, weekly insight generation (10-rule warm prompt, fallback template)
+      gemini_service.py — unified photo+text meal analysis (quantity/unit/calorie range/clarifying questions), refine_meal_analysis, weekly insight generation (10-rule warm prompt, fallback template — dormant, see insights.py note)
       unit_conversion.py — Indian household unit→grams table (katori, tbsp, bowl…) and scale_item() for proportional macro rescaling that skips user-edited fields
   migrations/
     001_create_tables.sql — profiles, daily_logs, meal_items, water_logs, weight_logs, weekly_insights
@@ -60,11 +61,11 @@ frontend/
     store/
       authStore.ts     — Supabase session, Google sign-in, onboarding check
       profileStore.ts  — profile CRUD, target calculation
-      dailyLogStore.ts — dashboard data, water, meals, favourites
+      dailyLogStore.ts — Today's `dashboard` (with current_streak) + separate `history`/`dayDetail` slices for the Log view (fetchHistory, fetchDayDetail, updateMealItem, deleteDayMealItem, addDayWater, removeDayWater, logDayWeight) — kept separate so browsing past days never clobbers Today
     components/
       layout/          — AppShell (floating pill nav + max-w-md container, replaces BottomNav)
-      dashboard/       — CalorieCard, MacroBars, WaterTracker (HydrationRing), PlateCard, LogDuoCard
-      meals/           — ReviewCard (quantity/unit stepper, calorie range display, per-item delete, "your correction" indicator, opt-in rescale-my-edits chip)
+      dashboard/       — CalorieCard, MacroBars, WaterTracker (HydrationRing), PlateCard (optional onEdit shows a pencil), LogDuoCard
+      meals/           — ReviewCard (edit-before-save: quantity/unit stepper, calorie range, per-item delete, "your correction" indicator, opt-in rescale chip); MealItemEditor (edit-AFTER-save: bottom-sheet for a persisted meal_item → PUT /meals/{id}, live rescale via unitConversion, respects user_edited_fields)
       shared/          — Card (rounded-3xl), Button (primary/secondary/ghost/gradient), StreakBadge
     lib/
       format.ts          — fmtApprox() for ~kcal display, greeting() for time-based salutation
@@ -72,11 +73,12 @@ frontend/
     pages/
       Login.tsx        — Google sign-in
       Onboarding.tsx   — 10-step stepper with validation; targets step shows weeks-to-goal for lose/gain
-      Dashboard.tsx    — tab pill, greeting + StreakBadge, CalorieCard, LogDuoCard, HydrationRing, PlateCards
-      MealLog.tsx      — Photo / Describe / Recent & Faves tabs, all through POST /meals/analyze; clarifying-question chips; mic input on Describe and as photo caption
+      Dashboard.tsx    — greeting + real StreakBadge (current_streak), CalorieCard, LogDuoCard, HydrationRing, PlateCards (today only)
+      MealLog.tsx      — Photo / Describe / Recent & Faves tabs, all through POST /meals/analyze; clarifying-question chips; mic input on Describe and as photo caption. Accepts `?date=YYYY-MM-DD` to log to a past day (defaults to today; returns to /history/{date} when set)
+      HistoryLog.tsx   — the "Log" tab (route /history): weekly adherence strip (7 day-dots), calorie-vs-goal trend chart (Recharts, 7/14/30-day toggle), and newest-first day list. Read-only summaries; taps open DayDetail
+      DayDetail.tsx    — route /history/:date: full editable past day — reuses CalorieCard/WaterTracker/PlateCard; edit/delete/add meals (via MealItemEditor + POST /meals/ with ?date), +/- water, backfill weight
       WeightTracker.tsx — input form, LineChart with raw + smoothed + goal line
       Profile.tsx      — inline-editable details, targets, sign out
-      WeeklyCheckin.tsx — consistency badge, stats, AI insight
     App.tsx            — BrowserRouter, AuthGuard with DEV_MODE bypass
     index.css          — Tailwind v4 @theme with design tokens
   .env                 — placeholder values for DEV_MODE
@@ -93,7 +95,7 @@ Six tables, all with RLS enabled (user sees own data only):
 | `meal_items` | daily_log_id FK, meal_type (breakfast/lunch/snack/dinner), item_name, quantity, unit, calories, calorie_low/high, macros, is_favourite, user_edited_fields (text[], fields never silently overwritten again), source (photo/manual/voice/text/favourite) | |
 | `water_logs` | user_id, log_date, amount_ml (default 250) | Each row = one glass |
 | `weight_logs` | user_id + log_date (unique), weight_kg, smoothed_kg | EMA smoothing (alpha=0.3) |
-| `weekly_insights` | user_id + week_start (unique), insight_text, stats_json | Cached Claude responses |
+| `weekly_insights` | user_id + week_start (unique), insight_text, stats_json | Cached Gemini responses — table retained but the feature is dormant (see stack note) |
 
 ## Key algorithms
 
@@ -105,6 +107,8 @@ Six tables, all with RLS enabled (user sees own data only):
 - **Deficit/surplus**: `weekly_rate_kg × 1100` cal/day (7700 cal ≈ 1 kg)
 - **Weeks to goal**: `abs(current_weight_kg - goal_weight_kg) / weekly_rate_kg`, computed for lose/gain only (omitted for maintain)
 - **Unit conversion**: `unit_conversion.py` maps Indian household units (katori, tbsp, bowl, piece, etc.) to grams; `scale_item()` rescales calories/macros proportionally on quantity/unit change, skipping any field listed in `user_edited_fields`
+- **Consistency streak**: consecutive days (ending today, or yesterday if today isn't logged yet) with `total_calories > 0`; computed in `dashboard.py` and returned as `current_streak` on `GET /dashboard/today`
+- **Day adherence status** (Log view, `HistoryLog.tsx` `dayStatus()`): `on` (mint) if calories within 85–110% of goal, `off` (yellow) if noticeably under/over, `none` (grey) if unlogged — deliberately no red/shame colour
 
 ## Design system — Berry Pop (MUST be followed throughout the product)
 
@@ -129,7 +133,7 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 - Mobile-first: `max-w-md` content container, `px-5 pt-8 pb-32` page padding (leaves room for floating nav)
 
 ### Layout
-- **Bottom nav**: Floating pill (`rounded-full`, `bg-card/90 backdrop-blur`), centered, 3 tabs (Today/Insights/Profile) + gradient `+ Log` FAB button — defined in `AppShell.tsx`
+- **Bottom nav**: Floating pill (`rounded-full`, `bg-card/90 backdrop-blur`), centered, 3 tabs (Today / **Log** / Profile) + gradient **`+ Add`** FAB button (→ `/log`) — defined in `AppShell.tsx`. Note: the "Log" tab (history, `/history`) is a noun; the "+ Add" FAB is the verb — kept distinct on purpose so the two labels don't collide
 - No full-width sticky bottom bar — the floating pill is the only nav pattern
 
 ### Component conventions
@@ -145,7 +149,8 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 - **One hard warning**: under-eating (<1200 kcal after 7 PM) — gentle nudge, not alarm
 - **Over-eating**: soft message at >115% target — "listen to your hunger from here"
 - **All calorie estimates shown with tilde**: "~430 kcal" — never false precision
-- **Weekly check-in nudge** on Mondays only
+- **Log (history) is encouragement, not audit**: past days shown with mint/yellow/grey adherence dots (never red), consistency celebrated via streak + "X/7 days logged" — missed days are grey, not flagged
+- **Past days are editable**: meals (add/edit/delete), water (+/-), and weight can all be corrected retroactively from `DayDetail.tsx` — forgiving by design
 
 ## Auth flow
 
@@ -170,14 +175,15 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 - `GET /health` — health check (no auth)
 - `GET/POST/PUT /profile/` — profile CRUD
 - `POST /profile/calculate-targets` — preview targets without saving
-- `GET /dashboard/today?log_date=YYYY-MM-DD` — aggregated dashboard data
+- `GET /dashboard/today?log_date=YYYY-MM-DD` — aggregated dashboard data (includes `current_streak`)
+- `GET /dashboard/history?limit=30` — past-day summaries for the Log view: `{ targets, days: [{ log_date, totals, water_ml, weight_kg }] }`, newest first
 - `POST /meals/analyze` — Gemini analysis; accepts any combo of photo + text_description, returns items with quantity/unit/calorie range and optional clarifying_questions
 - `POST /meals/analyze/refine` — re-estimates from clarifying-question answers; never overwrites `user_edited_fields`
-- `POST /meals/` — log items, `GET /meals/date/{date}`, `PUT/DELETE /meals/{id}`
+- `POST /meals/` — log items (each carries its own `log_date`, so it works for past days), `GET /meals/date/{date}`, `PUT/DELETE /meals/{id}` (PUT = edit a logged item)
 - `GET /meals/favourites`, `GET /meals/recent`, `POST /meals/{id}/favourite`
-- `POST /water/`, `GET /water/today`, `DELETE /water/{id}`
-- `POST /weight/`, `GET /weight/history`, `GET /weight/today`
-- `GET /insights/weekly` — cached or generate via Claude
+- `POST /water/`, `GET /water/today`, `DELETE /water/{id}`, `DELETE /water/?log_date=YYYY-MM-DD` (remove most-recent glass on that date)
+- `POST /weight/` (upserts per date, so it backfills/corrects), `GET /weight/history`, `GET /weight/today`
+- `GET /insights/weekly` — DORMANT: cached Gemini generation, not called by the frontend anymore
 
 ## Remaining work
 
@@ -187,7 +193,7 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 - [ ] Test full auth flow end-to-end (Google sign-in → onboarding → dashboard)
 - [ ] Test Gemini meal analysis with real Indian food photos, text-only descriptions, and photo+caption combos; confirm calorie ranges and clarifying questions are sensible
 - [ ] Test voice entry (`useSpeechInput`) on iOS Safari specifically — Web Speech API support is inconsistent there; confirm graceful fallback to text
-- [ ] Test Claude weekly insights generation
+- [ ] Test the Log/history flow end-to-end against a real Supabase: log across ≥2 days → `GET /dashboard/history` lists them → open a past day → edit a meal (PUT /meals/{id}) and confirm the day's totals + calorie/macro bars re-fetch correctly → add/remove water and backfill weight → confirm `current_streak` increments across consecutive logged days (all verified statically so far — tsc clean + Vite bundle builds; not yet run against a live backend)
 - [ ] Handle empty states gracefully (first-time user with no data)
 - [ ] Add error toasts for failed API calls
 - [ ] Deploy: Vercel (frontend) + Railway (backend)
@@ -196,8 +202,10 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 - [ ] Image upload to Supabase Storage (currently base64 in request)
 - [ ] Offline support / PWA
 - [ ] Dark mode (design tokens ready for it)
-- [ ] Meal history search
+- [ ] Search within the Log / history view
+- [ ] Per-day snapshot of targets (the Log currently judges past days against *today's* profile targets, not the targets in effect on that day)
 - [ ] Export data
+- [ ] Decide the fate of the dormant weekly-insight feature (`insights.py` + `gemini_service`) — resurface somewhere or delete
 
 ## Eval tool
 

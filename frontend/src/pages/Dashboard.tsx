@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useProfileStore } from '../store/profileStore'
 import { useToday, isEvening } from '../hooks/useToday'
@@ -69,26 +69,13 @@ export default function Dashboard() {
 
   return (
     <div>
-      {/* Tab pill */}
-      <div className="bg-muted p-1.5 rounded-2xl flex gap-1 mb-6">
-        <button className="flex-1 py-2.5 rounded-xl bg-card text-primary text-sm font-semibold shadow-sm ring-1 ring-black/5">
-          Today
-        </button>
-        <Link
-          to="/checkin"
-          className="flex-1 py-2.5 rounded-xl text-muted-foreground text-sm font-medium text-center"
-        >
-          Insights
-        </Link>
-      </div>
-
       {/* Greeting */}
       <header className="mb-6">
         <h1 className="font-display text-3xl text-foreground leading-tight">
           {greeting()}, <span className="text-accent">{firstName}.</span>
         </h1>
         <div className="mt-2 flex items-center gap-2">
-          <StreakBadge days={0} />
+          <StreakBadge days={dashboard.current_streak} />
         </div>
       </header>
 
@@ -168,16 +155,6 @@ export default function Dashboard() {
           <p className="text-sm text-foreground">
             You've had a full day — listen to your hunger from here.
           </p>
-        </div>
-      )}
-
-      {/* Monday check-in nudge */}
-      {new Date().getDay() === 1 && (
-        <div
-          onClick={() => navigate('/checkin')}
-          className="mt-4 rounded-3xl border border-secondary/30 bg-secondary-soft p-4 cursor-pointer"
-        >
-          <p className="text-sm text-secondary font-medium">Your weekly check-in is ready →</p>
         </div>
       )}
 

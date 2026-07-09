@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Star, Trash2 } from 'lucide-react'
+import { ChevronDown, Pencil, Star, Trash2 } from 'lucide-react'
 import type { MealSlot, MealItem } from '../../store/dailyLogStore'
 import { fmtApprox } from '../../lib/format'
 
@@ -15,9 +15,10 @@ interface PlateCardProps {
   defaultOpen?: boolean
   onFavourite?: (itemId: string, next: boolean) => void
   onRemove?: (itemId: string) => void
+  onEdit?: (item: MealItem) => void
 }
 
-export default function PlateCard({ slot, defaultOpen = false, onFavourite, onRemove }: PlateCardProps) {
+export default function PlateCard({ slot, defaultOpen = false, onFavourite, onRemove, onEdit }: PlateCardProps) {
   const [open, setOpen] = useState(defaultOpen)
   const title = slot.meal_type.charAt(0).toUpperCase() + slot.meal_type.slice(1)
 
@@ -45,7 +46,7 @@ export default function PlateCard({ slot, defaultOpen = false, onFavourite, onRe
       {open && slot.items.length > 0 && (
         <div className="px-4 pb-4 pt-0 border-t border-border/60 space-y-2">
           {slot.items.map((it) => (
-            <ItemRow key={it.id} item={it} onFavourite={onFavourite} onRemove={onRemove} />
+            <ItemRow key={it.id} item={it} onFavourite={onFavourite} onRemove={onRemove} onEdit={onEdit} />
           ))}
         </div>
       )}
@@ -63,10 +64,12 @@ function ItemRow({
   item,
   onFavourite,
   onRemove,
+  onEdit,
 }: {
   item: MealItem
   onFavourite?: (id: string, next: boolean) => void
   onRemove?: (id: string) => void
+  onEdit?: (item: MealItem) => void
 }) {
   return (
     <div className="flex items-center gap-3 pt-3">
@@ -82,8 +85,17 @@ function ItemRow({
         <MacroChip color="fat" label="F" value={item.fat_g ?? 0} />
         <MacroChip color="fiber" label="Fib" value={item.fibre_g ?? 0} />
       </div>
-      {(onFavourite || onRemove) && (
+      {(onFavourite || onRemove || onEdit) && (
         <div className="flex flex-col gap-1 shrink-0">
+          {onEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(item) }}
+              aria-label="Edit"
+              className="text-muted-foreground/60"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
           {onFavourite && (
             <button
               onClick={(e) => { e.stopPropagation(); onFavourite(item.id, !item.is_favourite) }}

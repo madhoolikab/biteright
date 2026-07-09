@@ -54,6 +54,43 @@ interface DashboardData {
   water_target_ml: number
   meals: MealSlot[]
   today_weight: WeightEntry | null
+  current_streak: number
+}
+
+interface DaySummary {
+  log_date: string
+  total_calories: number
+  total_protein_g: number
+  total_carbs_g: number
+  total_fat_g: number
+  total_fibre_g: number
+  water_ml: number
+  weight_kg: number | null
+}
+
+interface HistoryTargets {
+  calorie_target: number
+  protein_target_g: number
+  carbs_target_g: number
+  fat_target_g: number
+  fibre_target_g: number
+  water_target_ml: number
+}
+
+interface MealItemUpdate {
+  item_name?: string
+  calories?: number
+  carbs_g?: number | null
+  protein_g?: number | null
+  fat_g?: number | null
+  fibre_g?: number | null
+  portion_grams?: number | null
+  portion_desc?: string | null
+  quantity?: number | null
+  unit?: string | null
+  calorie_low?: number | null
+  calorie_high?: number | null
+  user_edited_fields?: string[]
 }
 
 const MOCK_DASHBOARD: DashboardData = {
@@ -95,11 +132,53 @@ const MOCK_DASHBOARD: DashboardData = {
     { meal_type: 'dinner', total_calories: 0, item_count: 0, items: [] },
   ],
   today_weight: null,
+  current_streak: 5,
+}
+
+const MOCK_HISTORY_TARGETS: HistoryTargets = {
+  calorie_target: 1850,
+  protein_target_g: 93,
+  carbs_target_g: 231,
+  fat_target_g: 51,
+  fibre_target_g: 25,
+  water_target_ml: 2500,
+}
+
+function mockHistory(): DaySummary[] {
+  const today = new Date()
+  const samples = [1340, 1780, 2050, 1620, 1910, 0, 1495, 1710, 2230, 1580, 1650, 1420, 1990, 1755]
+  return samples.map((cal, i) => {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    return {
+      log_date: d.toISOString().split('T')[0],
+      total_calories: cal,
+      total_protein_g: Math.round(cal * 0.045),
+      total_carbs_g: Math.round(cal * 0.11),
+      total_fat_g: Math.round(cal * 0.03),
+      total_fibre_g: Math.round(cal / 120),
+      water_ml: cal > 0 ? 1500 + (i % 4) * 250 : 0,
+      weight_kg: cal > 0 ? Math.round((68 - i * 0.05) * 10) / 10 : null,
+    }
+  })
 }
 
 interface DailyLogState {
   dashboard: DashboardData | null
   isLoading: boolean
+  // History browsing — kept separate so viewing past days never clobbers Today
+  history: DaySummary[]
+  historyTargets: HistoryTargets | null
+  historyLoading: boolean
+  dayDetail: DashboardData | null
+  dayDetailLoading: boolean
+  fetchHistory: (limit?: number) => Promise<void>
+  fetchDayDetail: (date: string) => Promise<void>
+  updateMealItem: (itemId: string, updates: MealItemUpdate, date: string) => Promise<void>
+  deleteDayMealItem: (itemId: string, date: string) => Promise<void>
+  addDayWater: (date: string) => Promise<void>
+  removeDayWater: (date: string) => Promise<void>
+  logDayWeight: (date: string, weightKg: number) => Promise<void>
   fetchDashboard: (date: string) => Promise<void>
   addWater: (date: string) => Promise<void>
   logMealItems: (items: Array<{
@@ -128,6 +207,73 @@ interface DailyLogState {
 export const useDailyLogStore = create<DailyLogState>((set, get) => ({
   dashboard: null,
   isLoading: false,
+  history: [],
+  historyTargets: null,
+  historyLoading: false,
+  dayDetail: null,
+  dayDetailLoading: false,
+
+  fetchHistory: async (limit = 30) => {
+    if (DEV_MODE) {
+      set({ history: mockHistory(), historyTargets: MOCK_HISTORY_TARGETS, historyLoading: false })
+      return
+    }
+    set({ historyLoading: true })
+    try {
+      const { data } = await api.get(`/dashboard/history?limit=${limit}`)
+      set({ history: data.days, historyTargets: data.targets })
+    } catch {
+      set({ history: [], historyTargets: null })
+    } finally {
+      set({ historyLoading: false })
+    }
+  },
+
+  fetchDayDetail: async (date) => {
+    if (DEV_MODE) {
+      set({ dayDetail: { ...MOCK_DASHBOARD, log_date: date }, dayDetailLoading: false })
+      return
+    }
+    set({ dayDetailLoading: true })
+    try {
+      const { data } = await api.get(`/dashboard/today?log_date=${date}`)
+      set({ dayDetail: data })
+    } catch {
+      set({ dayDetail: null })
+    } finally {
+      set({ dayDetailLoading: false })
+    }
+  },
+
+  updateMealItem: async (itemId, updates, date) => {
+    if (DEV_MODE) return
+    await api.put(`/meals/${itemId}`, updates)
+    await get().fetchDayDetail(date)
+  },
+
+  deleteDayMealItem: async (itemId, date) => {
+    if (DEV_MODE) return
+    await api.delete(`/meals/${itemId}`)
+    await get().fetchDayDetail(date)
+  },
+
+  addDayWater: async (date) => {
+    if (DEV_MODE) return
+    await api.post('/water/', { log_date: date })
+    await get().fetchDayDetail(date)
+  },
+
+  removeDayWater: async (date) => {
+    if (DEV_MODE) return
+    await api.delete(`/water/?log_date=${date}`)
+    await get().fetchDayDetail(date)
+  },
+
+  logDayWeight: async (date, weightKg) => {
+    if (DEV_MODE) return
+    await api.post('/weight/', { log_date: date, weight_kg: weightKg })
+    await get().fetchDayDetail(date)
+  },
 
   fetchDashboard: async (date) => {
     if (DEV_MODE) {
@@ -175,4 +321,4 @@ export const useDailyLogStore = create<DailyLogState>((set, get) => ({
   },
 }))
 
-export type { MealItem, MealSlot, DashboardData, WeightEntry }
+export type { MealItem, MealSlot, DashboardData, WeightEntry, DaySummary, HistoryTargets, MealItemUpdate }

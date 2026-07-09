@@ -9,7 +9,8 @@ import Dashboard from './pages/Dashboard'
 import MealLog from './pages/MealLog'
 import WeightTracker from './pages/WeightTracker'
 import Profile from './pages/Profile'
-import WeeklyCheckin from './pages/WeeklyCheckin'
+import HistoryLog from './pages/HistoryLog'
+import DayDetail from './pages/DayDetail'
 
 const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL?.includes('placeholder')
 
@@ -50,7 +51,8 @@ export default function App() {
           <Route path="/log" element={<MealLog />} />
           <Route path="/weight" element={<WeightTracker />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/checkin" element={<WeeklyCheckin />} />
+          <Route path="/history" element={<HistoryLog />} />
+          <Route path="/history/:date" element={<DayDetail />} />
         </Route>
       </Routes>
     </BrowserRouter>
