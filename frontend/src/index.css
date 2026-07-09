@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --radius-3xl: calc(var(--radius) + 20px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-protein: var(--protein);
+  --color-carbs: var(--carbs);
+  --color-fat: var(--fat);
+  --color-fiber: var(--fiber);
+  --color-fiber-soft: var(--fiber-soft);
+  --color-water: var(--water);
+  --color-ink: var(--ink);
+  --font-display: "Fredoka", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 1.25rem;
+
+  /* Berry Pop — playful violet/pink/mint */
+  --background: oklch(0.985 0.012 305);
+  --foreground: oklch(0.22 0.04 295);
+  --ink: oklch(0.18 0.05 295);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.04 295);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.04 295);
+
+  /* Primary: electric violet */
+  --primary: oklch(0.6 0.22 285);
+  --primary-foreground: oklch(0.99 0.005 300);
+  --primary-soft: oklch(0.96 0.035 290);
+
+  /* Secondary: mint teal */
+  --secondary: oklch(0.72 0.13 180);
+  --secondary-foreground: oklch(0.18 0.05 295);
+  --secondary-soft: oklch(0.96 0.04 180);
+
+  /* Accent: bubblegum pink */
+  --accent: oklch(0.7 0.22 0);
+  --accent-foreground: oklch(0.99 0.005 300);
+  --accent-soft: oklch(0.96 0.035 0);
+
+  /* Warning: sunny yellow */
+  --warning: oklch(0.88 0.16 95);
+  --warning-soft: oklch(0.98 0.05 95);
+
+  --muted: oklch(0.965 0.012 300);
+  --muted-foreground: oklch(0.5 0.03 295);
+
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.99 0.005 300);
+
+  --border: oklch(0.93 0.015 300);
+  --input: oklch(0.95 0.012 300);
+  --ring: oklch(0.6 0.22 285);
+
+  /* Macro colors: protein=violet, carbs=yellow, fat=pink, fibre=mint */
+  --protein: oklch(0.6 0.22 285);
+  --carbs: oklch(0.85 0.16 95);
+  --fat: oklch(0.7 0.22 0);
+  --fiber: oklch(0.72 0.13 180);
+  --fiber-soft: oklch(0.96 0.04 180);
+  --water: oklch(0.7 0.15 230);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    margin: 0;
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+}
+
+@utility gradient-berry {
+  background-image: linear-gradient(135deg, #7c5cff 0%, #ff5d9e 100%);
+}
+
+@utility gradient-mint {
+  background-image: linear-gradient(135deg, #00c2a8 0%, #7c5cff 100%);
+}
+
+@keyframes streak-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.streak-pop {
+  animation: streak-pop 600ms ease-out;
+}
+
+@keyframes water-wave {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.water-wave { animation: water-wave 2.4s ease-in-out infinite; }

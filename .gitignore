@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# Build
+frontend/dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Eval tool data (real food photos + personal labels)
+eval/data/
+
+# Reference files (not part of the app)
+*.pdf
+Screenshot*.png
+
+# Personal data — not for public repo
+BiteRight FoodPics/
+personalized calorie tracking conversation.md

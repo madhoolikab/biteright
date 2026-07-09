@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BiteRight Eval Tool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --violet: #7c5cff;
+    --mint: #00c2a8;
+    --pink: #ff5d9e;
+    --yellow: #ffd23f;
+    --bg: #f7f6fb;
+    --card: #ffffff;
+    --border: #e4e1f0;
+    --text: #221f33;
+    --muted: #6c6884;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 16px;
+    margin: 0;
+    white-space: nowrap;
+  }
+  .progress-text { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill {
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .pill.active { background: var(--violet); color: white; border-color: var(--violet); }
+  .spacer { flex: 1; }
+  button.tool {
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.tool.active { background: var(--violet); color: white; border-color: var(--violet); }
+  .queue-badge {
+    font-size: 12px;
+    background: var(--yellow);
+    color: #4a3d00;
+    border-radius: 999px;
+    padding: 3px 10px;
+    display: none;
+  }
+  main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+
+  /* Detail view */
+  .detail { display: flex; gap: 24px; align-items: flex-start; }
+  .image-pane { flex: 1; min-width: 280px; position: sticky; top: 70px; }
+  .image-pane img {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    cursor: zoom-in;
+    max-height: 70vh;
+    object-fit: contain;
+    background: #000;
+  }
+  .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .nav-row span { font-size: 12px; color: var(--muted); }
+  .editor { flex: 1.2; min-width: 320px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  table.items { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.items th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 6px; }
+  table.items td { padding: 3px 6px; }
+  table.items input, table.items select {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  table.items input[type="number"] { width: 64px; }
+  .del-row { cursor: pointer; color: var(--pink); font-weight: bold; padding: 0 6px; }
+  .add-item-btn, .primary-btn, .ghost-btn {
+    border-radius: 10px;
+    border: none;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .add-item-btn { background: var(--mint); color: white; margin-top: 8px; }
+  .primary-btn { background: var(--violet); color: white; }
+  .ghost-btn { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  textarea.notes {
+    width: 100%;
+    min-height: 60px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .dirty-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--pink); display: none;
+  }
+  label.toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+
+  /* Grid view */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .thumb {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    background: #000;
+    aspect-ratio: 1;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.95; }
+  .thumb.selected { border-color: var(--violet); }
+  .badge {
+    position: absolute; top: 4px; left: 4px;
+    font-size: 10px; padding: 2px 6px; border-radius: 6px; color: white;
+  }
+  .badge.labeled { background: var(--mint); }
+  .badge.ignored { background: var(--muted); }
+  .badge.unlabeled { background: var(--pink); }
+  .thumb .fname {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    font-size: 9px; color: white; background: rgba(0,0,0,0.5);
+    padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .grid-toolbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+
+  /* Eval panel */
+  .eval-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .metric-tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .metric-tile h4 { margin: 0 0 6px 0; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .metric-tile .num { font-size: 20px; font-weight: 700; }
+  table.results { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  table.results th, table.results td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.results tr:hover { background: #f2f0fa; cursor: pointer; }
+  .ok { color: var(--mint); font-weight: 600; }
+  .bad { color: var(--pink); font-weight: 600; }
+  .drilldown { display: flex; gap: 20px; margin-top: 16px; }
+  .drilldown .col { flex: 1; }
+  .item-line { font-size: 12px; padding: 4px 6px; border-radius: 6px; margin-bottom: 4px; }
+  .item-line.matched { background: #e6f9f5; }
+  .item-line.unmatched { background: #ffe9f0; }
+
+  /* Lightbox */
+  .lightbox {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 92vw; max-height: 92vh; }
+
+  /* Shortcut overlay */
+  .shortcut-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .shortcut-overlay.open { display: flex; }
+  .shortcut-card {
+    background: var(--card); border-radius: 16px; padding: 24px; max-width: 420px; font-size: 13px;
+  }
+  .shortcut-card kbd {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 6px; font-family: monospace;
+  }
+  .shortcut-card div { margin-bottom: 6px; }
+  .import-box { display: flex; gap: 8px; align-items: center; }
+  .import-box input[type="text"] { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); width: 260px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍛 BiteRight Eval</h1>
+  <span class="progress-text" id="progressText">loading…</span>
+  <div class="pills" id="filterPills">
+    <span class="pill active" data-filter="all">All</span>
+    <span class="pill" data-filter="unlabeled">Unlabeled</span>
+    <span class="pill" data-filter="labeled">Labeled</span>
+    <span class="pill" data-filter="ignored">Ignored</span>
+  </div>
+  <div class="spacer"></div>
+  <span class="queue-badge" id="queueBadge"></span>
+  <button class="tool" id="gridToggle" title="G">Grid view</button>
+  <button class="tool" id="evalToggle" title="E">Eval mode</button>
+  <button class="tool" id="helpBtn" title="?">?</button>
+</header>
+
+<main>
+  <div class="import-box card" id="importBox">
+    <input type="text" id="importPath" placeholder="Server-side folder or file path to import" />
+    <button class="primary-btn" id="importBtn">Import</button>
+    <input type="file" id="uploadInput" multiple accept="image/*" style="display:none" />
+    <button class="ghost-btn" id="uploadBtn">Upload files</button>
+    <span id="importStatus" style="font-size:12px; color: var(--muted)"></span>
+  </div>
+
+  <div id="detailView" class="detail"></div>
+  <div id="gridView" class="grid" style="display:none"></div>
+  <div id="evalView" style="display:none"></div>
+</main>
+
+<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" /></div>
+
+<div class="shortcut-overlay" id="shortcutOverlay">
+  <div class="shortcut-card">
+    <h3>Keyboard shortcuts</h3>
+    <div><kbd>&larr;</kbd> / <kbd>&rarr;</kbd> prev / next sample</div>
+    <div><kbd>Enter</kbd> / <kbd>Cmd+S</kbd> save</div>
+    <div><kbd>Cmd+Enter</kbd> save &amp; jump to next unlabeled</div>
+    <div><kbd>I</kbd> toggle ignore</div>
+    <div><kbd>A</kbd> add item row</div>
+    <div><kbd>G</kbd> grid view</div>
+    <div><kbd>E</kbd> toggle eval panel</div>
+    <div><kbd>R</kbd> queue current sample for eval</div>
+    <div><kbd>?</kbd> this overlay</div>
+    <div style="margin-top:10px; color: var(--muted)">Shortcuts are suppressed while typing in a field (except Cmd-combos).</div>
+  </div>
+</div>
+
+<script>
+const MEAL_UNITS = ["piece", "cup", "tbsp", "tsp", "bowl", "katori", "glass", "gram", "ml"];
+const ITEM_FIELDS = [
+  ["item_name", "Name", "text"],
+  ["quantity", "Qty", "number"],
+  ["unit", "Unit", "select"],
+  ["estimated_grams", "Grams", "number"],
+  ["calories", "Cal", "number"],
+  ["carbs_g", "Carbs", "number"],
+  ["protein_g", "Protein", "number"],
+  ["fat_g", "Fat", "number"],
+  ["fibre_g", "Fibre", "number"],
+];
+
+let state = {
+  samples: [],
+  counts: {},
+  filter: "all",
+  currentId: null,
+  viewMode: "detail", // detail | grid
+  evalMode: false,
+  dirty: false,
+  selected: new Set(),
+  editorItems: [],
+  evalResults: null,
+  pollTimer: null,
+};
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status}: ${text}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function filteredSamples() {
+  if (state.filter === "all") return state.samples;
+  return state.samples.filter(s => s.status === state.filter);
+}
+
+async function loadSamples(keepCurrent) {
+  const data = await api("/api/samples");
+  state.samples = data.samples;
+  state.counts = data.counts;
+  renderHeader();
+  const list = filteredSamples();
+  if (!keepCurrent || !list.find(s => s.id === state.currentId)) {
+    state.currentId = list.length ? list[0].id : null;
+  }
+  renderAll();
+}
+
+function renderHeader() {
+  const c = state.counts;
+  document.getElementById("progressText").textContent =
+    c.total ? `${c.labeled} labeled · ${c.ignored} ignored · ${c.unlabeled} remaining` : "No samples yet — import some below";
+  document.querySelectorAll("#filterPills .pill").forEach(p => {
+    p.classList.toggle("active", p.dataset.filter === state.filter);
+  });
+}
+
+function renderAll() {
+  document.getElementById("detailView").style.display = (!state.viewMode || state.viewMode === "detail") && !state.evalMode ? "flex" : "none";
+  document.getElementById("gridView").style.display = state.viewMode === "grid" && !state.evalMode ? "grid" : "none";
+  document.getElementById("evalView").style.display = state.evalMode ? "block" : "none";
+  document.getElementById("gridToggle").classList.toggle("active", state.viewMode === "grid");
+  document.getElementById("evalToggle").classList.toggle("active", state.evalMode);
+
+  if (state.evalMode) renderEvalView();
+  else if (state.viewMode === "grid") renderGridView();
+  else renderDetailView();
+}
+
+// --- Detail view ---
+
+function currentSample() {
+  return state.samples.find(s => s.id === state.currentId);
+}
+
+function renderDetailView() {
+  const el = document.getElementById("detailView");
+  const sample = currentSample();
+  if (!sample) {
+    el.innerHTML = `<div class="empty">No samples match this filter.</div>`;
+    return;
+  }
+  state.editorItems = sample.label ? JSON.parse(JSON.stringify(sample.label.items)) : [];
+  const list = filteredSamples();
+  const idx = list.findIndex(s => s.id === sample.id);
+
+  el.innerHTML = `
+    <div class="image-pane">
+      <img src="/images/${sample.id}" id="mainImg" />
+      <div class="nav-row">
+        <span>${idx + 1} / ${list.length} &middot; ${sample.original_filename}</span>
+        <span class="dirty-dot" id="dirtyDot"></span>
+      </div>
+    </div>
+    <div class="editor">
+      <div class="card">
+        <table class="items" id="itemsTable"></table>
+        <button class="add-item-btn" id="addItemBtn">+ Add item</button>
+      </div>
+      <div class="card">
+        <label style="font-size:12px; color:var(--muted); font-weight:600;">NOTES</label>
+        <textarea class="notes" id="notesArea" placeholder="e.g. oil unclear, shot at angle">${sample.notes || ""}</textarea>
+      </div>
+      <div class="row">
+        <label class="toggle"><input type="checkbox" id="ignoreToggle" ${sample.status === "ignored" ? "checked" : ""}/> Ignore this sample</label>
+        <div class="spacer"></div>
+        <button class="ghost-btn" id="prevBtn">&larr; Prev</button>
+        <button class="ghost-btn" id="nextBtn">Next &rarr;</button>
+        <button class="primary-btn" id="saveBtn">Save (Enter)</button>
+      </div>
+    </div>
+  `;
+
+  renderItemsTable();
+
+  document.getElementById("mainImg").onclick = () => openLightbox(`/images/${sample.id}`);
+  document.getElementById("addItemBtn").onclick = () => { addItemRow(); markDirty(); };
+  document.getElementById("notesArea").oninput = markDirty;
+  document.getElementById("ignoreToggle").onchange = markDirty;
+  document.getElementById("prevBtn").onclick = () => step(-1);
+  document.getElementById("nextBtn").onclick = () => step(1);
+  document.getElementById("saveBtn").onclick = () => saveCurrent();
+  state.dirty = false;
+}
+
+function renderItemsTable() {
+  const table = document.getElementById("itemsTable");
+  let html = `<tr>${ITEM_FIELDS.map(f => `<th>${f[1]}</th>`).join("")}<th></th></tr>`;
+  state.editorItems.forEach((item, i) => {
+    html += `<tr data-idx="${i}">`;
+    ITEM_FIELDS.forEach(([field, label, type]) => {
+      const val = item[field] ?? (type === "number" ? 0 : "");
+      if (type === "select") {
+        html += `<td><select data-field="${field}">${MEAL_UNITS.map(u => `<option value="${u}" ${u === val ? "selected" : ""}>${u}</option>`).join("")}</select></td>`;
+      } else {
+        html += `<td><input type="${type}" data-field="${field}" value="${val}" step="any" /></td>`;
+      }
+    });
+    html += `<td><span class="del-row" data-idx="${i}">✕</span></td></tr>`;
+  });
+  table.innerHTML = html;
+
+  table.querySelectorAll("input, select").forEach(inp => {
+    inp.onchange = (e) => {
+      const row = e.target.closest("tr");
+      const idx = Number(row.dataset.idx);
+      const field = e.target.dataset.field;
+      const type = e.target.tagName === "SELECT" ? "select" : e.target.type;
+      state.editorItems[idx][field] = type === "number" ? Number(e.target.value) : e.target.value;
+      markDirty();
+    };
+  });
+  table.querySelectorAll('input[type="number"]').forEach(inp => {
+    inp.onpaste = (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      const tokens = text.split(/[\s,]+/).map(t => t.trim()).filter(t => t.length && !isNaN(Number(t)));
+      if (tokens.length <= 1) return; // let default single-value paste happen
+      e.preventDefault();
+      const row = e.target.closest("tr");
+      const idx = Number(row.dataset.idx);
+      const numberInputs = Array.from(row.querySelectorAll('input[type="number"]'));
+      const startPos = numberInputs.indexOf(e.target);
+      tokens.forEach((tok, i) => {
+        const targetInp = numberInputs[startPos + i];
+        if (!targetInp) return;
+        targetInp.value = tok;
+        state.editorItems[idx][targetInp.dataset.field] = Number(tok);
+      });
+      markDirty();
+    };
+  });
+  table.querySelectorAll(".del-row").forEach(span => {
+    span.onclick = () => {
+      state.editorItems.splice(Number(span.dataset.idx), 1);
+      renderItemsTable();
+      markDirty();
+    };
+  });
+}
+
+function addItemRow() {
+  state.editorItems.push({
+    item_name: "", quantity: 1, unit: "piece", estimated_grams: 0,
+    calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fibre_g: 0,
+  });
+  renderItemsTable();
+}
+
+function markDirty() {
+  state.dirty = true;
+  const dot = document.getElementById("dirtyDot");
+  if (dot) dot.style.display = "inline-block";
+}
+
+async function saveCurrent(jumpToNextUnlabeled) {
+  const sample = currentSample();
+  if (!sample) return;
+  const notesEl = document.getElementById("notesArea");
+  const ignoreEl = document.getElementById("ignoreToggle");
+  const notes = notesEl ? notesEl.value : sample.notes;
+  const ignored = ignoreEl ? ignoreEl.checked : sample.status === "ignored";
+  const body = {
+    notes,
+    status: ignored ? "ignored" : (sample.status === "ignored" ? "unlabeled" : undefined),
+  };
+  if (state.editorItems.length) {
+    body.label = { items: state.editorItems };
+  }
+  await api(`/api/samples/${sample.id}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  state.dirty = false;
+  await loadSamples(true);
+  if (jumpToNextUnlabeled) jumpToUnlabeled();
+}
+
+function step(delta) {
+  if (state.dirty) saveCurrent();
+  const list = filteredSamples();
+  const idx = list.findIndex(s => s.id === state.currentId);
+  const next = list[idx + delta];
+  if (next) { state.currentId = next.id; renderDetailView(); }
+}
+
+function jumpToUnlabeled() {
+  const next = state.samples.find(s => s.status === "unlabeled");
+  if (next) { state.currentId = next.id; state.viewMode = "detail"; renderAll(); }
+}
+
+function openLightbox(src) {
+  document.getElementById("lightboxImg").src = src;
+  document.getElementById("lightbox").classList.add("open");
+}
+document.getElementById("lightbox").onclick = () => document.getElementById("lightbox").classList.remove("open");
+
+// --- Grid view ---
+
+function renderGridView() {
+  const el = document.getElementById("gridView");
+  const list = filteredSamples();
+  if (!list.length) {
+    el.style.display = "block";
+    el.innerHTML = `<div class="empty">No samples match this filter.</div>`;
+    return;
+  }
+  el.style.display = "grid";
+  el.innerHTML = `
+    <div class="grid-toolbar" style="grid-column: 1/-1">
+      <span>${state.selected.size} selected</span>
+      <button class="ghost-btn" id="bulkIgnore">Ignore</button>
+      <button class="ghost-btn" id="bulkUnignore">Un-ignore</button>
+      <button class="ghost-btn" id="bulkRemove">Remove</button>
+      <button class="primary-btn" id="bulkEval">Queue for eval</button>
+    </div>
+  ` + list.map(s => `
+    <div class="thumb ${state.selected.has(s.id) ? "selected" : ""}" data-id="${s.id}">
+      <span class="badge ${s.status}">${s.status}</span>
+      <img src="/thumbs/${s.id}" loading="lazy" />
+      <span class="fname">${s.original_filename}</span>
+    </div>
+  `).join("");
+
+  el.querySelectorAll(".thumb").forEach(div => {
+    div.onclick = (e) => {
+      const id = div.dataset.id;
+      if (e.shiftKey || e.metaKey) {
+        if (state.selected.has(id)) state.selected.delete(id); else state.selected.add(id);
+        renderGridView();
+      } else {
+        state.currentId = id;
+        state.viewMode = "detail";
+        renderAll();
+      }
+    };
+  });
+  document.getElementById("bulkIgnore").onclick = () => bulkUpdate({ status: "ignored" });
+  document.getElementById("bulkUnignore").onclick = () => bulkUpdate({ status: "unlabeled" });
+  document.getElementById("bulkRemove").onclick = () => bulkRemove();
+  document.getElementById("bulkEval").onclick = () => queueEval([...state.selected]);
+}
+
+async function bulkUpdate(body) {
+  for (const id of state.selected) {
+    await api(`/api/samples/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  }
+  state.selected.clear();
+  await loadSamples(true);
+}
+
+async function bulkRemove() {
+  if (!confirm(`Remove ${state.selected.size} sample(s) from the dataset?`)) return;
+  for (const id of state.selected) {
+    await api(`/api/samples/${id}`, { method: "DELETE" });
+  }
+  state.selected.clear();
+  await loadSamples(false);
+}
+
+// --- Eval view ---
+
+async function queueEval(ids) {
+  await api("/api/eval/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+  startPolling();
+}
+
+function startPolling() {
+  if (state.pollTimer) return;
+  state.pollTimer = setInterval(async () => {
+    const status = await api("/api/eval/status");
+    const badge = document.getElementById("queueBadge");
+    if (status.pending > 0 || status.current) {
+      badge.style.display = "inline-block";
+      badge.textContent = `eval: ${status.done}/${status.total} running…`;
+    } else {
+      badge.style.display = "none";
+      clearInterval(state.pollTimer);
+      state.pollTimer = null;
+      if (state.evalMode) loadEvalResults();
+    }
+  }, 2000);
+}
+
+async function loadEvalResults() {
+  state.evalResults = await api("/api/eval/results");
+  renderEvalView();
+}
+
+function renderEvalView() {
+  const el = document.getElementById("evalView");
+  if (!state.evalResults) {
+    el.innerHTML = `<div class="empty">Loading eval results…</div>`;
+    loadEvalResults();
+    return;
+  }
+  const { results, aggregate } = state.evalResults;
+  const labeledCount = state.samples.filter(s => s.status === "labeled").length;
+
+  let html = `
+    <div class="card row">
+      <button class="primary-btn" id="runAllBtn">Run all labeled (${labeledCount})</button>
+      <button class="ghost-btn" id="runCurrentBtn">Run current sample</button>
+      <button class="ghost-btn" id="refreshResultsBtn">Refresh results</button>
+      <a class="ghost-btn" href="/api/eval/export" style="text-decoration:none; display:inline-block;">Export CSV</a>
+    </div>
+  `;
+
+  if (!results.length) {
+    html += `<div class="empty">No eval runs yet. Label some samples, then queue an eval run.</div>`;
+  } else {
+    html += `<div class="eval-metrics">`;
+    html += metricTile("Calories MAE", aggregate.calories.mae, "kcal");
+    html += metricTile("Calories MAPE", aggregate.calories.mape, "%");
+    html += metricTile("Calories bias", aggregate.calories.mean_signed_bias, "kcal (over/under)");
+    html += metricTile("Range coverage", aggregate.range_coverage_pct, "% true value in predicted range");
+    html += metricTile("Item precision", aggregate.item_detection.precision, "");
+    html += metricTile("Item recall", aggregate.item_detection.recall, "");
+    html += `</div>`;
+
+    html += `<div class="eval-metrics" style="margin-top:12px">`;
+    ["protein_g", "carbs_g", "fat_g", "fibre_g"].forEach(f => {
+      const m = aggregate[f];
+      html += metricTile(f.replace("_g", ""), m.mae, `g MAE (bias ${m.mean_signed_bias})`);
+    });
+    html += `</div>`;
+
+    html += `<table class="results" id="resultsTable"><tr>
+      <th>Sample</th><th>True kcal</th><th>Pred kcal</th><th>Range</th><th>Missed</th><th>Extra</th>
+    </tr>`;
+    results.forEach(r => {
+      html += `<tr data-id="${r.id}">
+        <td>${r.original_filename}</td>
+        <td>${r.true.calories}</td>
+        <td>${r.predicted.calories}</td>
+        <td class="${r.in_range ? "ok" : "bad"}">${r.predicted_range.low}–${r.predicted_range.high} ${r.in_range === null ? "" : (r.in_range ? "✓" : "✕")}</td>
+        <td>${r.missed_items}</td>
+        <td>${r.hallucinated_items}</td>
+      </tr>`;
+    });
+    html += `</table>`;
+    html += `<div id="drilldown"></div>`;
+  }
+
+  el.innerHTML = html;
+  document.getElementById("runAllBtn").onclick = () => queueEval("all");
+  document.getElementById("runCurrentBtn").onclick = () => { if (state.currentId) queueEval([state.currentId]); };
+  document.getElementById("refreshResultsBtn").onclick = () => loadEvalResults();
+
+  if (results.length) {
+    document.querySelectorAll("#resultsTable tr[data-id]").forEach(tr => {
+      tr.onclick = () => renderDrilldown(tr.dataset.id);
+    });
+  }
+}
+
+function metricTile(label, value, suffix) {
+  const display = value === null || value === undefined ? "—" : value;
+  return `<div class="metric-tile"><h4>${label}</h4><div class="num">${display}</div><div style="font-size:11px;color:var(--muted)">${suffix}</div></div>`;
+}
+
+function renderDrilldown(id) {
+  const r = state.evalResults.results.find(x => x.id === id);
+  const el = document.getElementById("drilldown");
+  el.innerHTML = `
+    <div class="card">
+      <strong>${r.original_filename}</strong> — <em>${r.meal_description || ""}</em>
+      <div class="drilldown">
+        <div class="col">
+          <h4>Ground truth</h4>
+          ${r.label_items.map(i => `<div class="item-line ${i._matched ? "matched" : "unmatched"}">${i.item_name} — ${i.calories} kcal</div>`).join("")}
+        </div>
+        <div class="col">
+          <h4>Predicted</h4>
+          ${r.pred_items.map(i => `<div class="item-line ${i._matched ? "matched" : "unmatched"}">${i.item_name} — ${i.calories} kcal (${i.calorie_low}-${i.calorie_high})</div>`).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// --- Header controls ---
+
+document.querySelectorAll("#filterPills .pill").forEach(p => {
+  p.onclick = () => { state.filter = p.dataset.filter; loadSamples(false); };
+});
+document.getElementById("gridToggle").onclick = () => { state.viewMode = state.viewMode === "grid" ? "detail" : "grid"; renderAll(); };
+document.getElementById("evalToggle").onclick = () => { state.evalMode = !state.evalMode; if (state.evalMode) state.evalResults = null; renderAll(); };
+document.getElementById("helpBtn").onclick = () => document.getElementById("shortcutOverlay").classList.add("open");
+document.getElementById("shortcutOverlay").onclick = (e) => { if (e.target.id === "shortcutOverlay") e.currentTarget.classList.remove("open"); };
+
+document.getElementById("importBtn").onclick = async () => {
+  const path = document.getElementById("importPath").value.trim();
+  if (!path) return;
+  const statusEl = document.getElementById("importStatus");
+  statusEl.textContent = "Importing…";
+  try {
+    const res = await api("/api/samples/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path }) });
+    statusEl.textContent = `Imported ${res.imported}, skipped ${res.skipped_duplicates} duplicates`;
+    await loadSamples(false);
+  } catch (e) {
+    statusEl.textContent = "Error: " + e.message;
+  }
+};
+
+document.getElementById("uploadBtn").onclick = () => document.getElementById("uploadInput").click();
+document.getElementById("uploadInput").onchange = async (e) => {
+  const files = e.target.files;
+  if (!files.length) return;
+  const formData = new FormData();
+  for (const f of files) formData.append("files", f);
+  const statusEl = document.getElementById("importStatus");
+  statusEl.textContent = "Uploading…";
+  const res = await api("/api/samples/upload", { method: "POST", body: formData });
+  statusEl.textContent = `Imported ${res.imported}, skipped ${res.skipped_duplicates} duplicates`;
+  await loadSamples(false);
+};
+
+// --- Keyboard shortcuts ---
+
+document.addEventListener("keydown", (e) => {
+  const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+  const cmd = e.metaKey || e.ctrlKey;
+
+  if (typing && !cmd) return;
+
+  if (e.key === "?") { document.getElementById("shortcutOverlay").classList.toggle("open"); return; }
+
+  if (document.getElementById("lightbox").classList.contains("open")) {
+    document.getElementById("lightbox").classList.remove("open");
+    return;
+  }
+
+  if (state.evalMode || state.viewMode === "grid") {
+    if (e.key.toLowerCase() === "g") { state.viewMode = state.viewMode === "grid" ? "detail" : "grid"; renderAll(); }
+    if (e.key.toLowerCase() === "e") { state.evalMode = !state.evalMode; renderAll(); }
+    return;
+  }
+
+  switch (e.key.toLowerCase()) {
+    case "arrowleft": step(-1); break;
+    case "arrowright": step(1); break;
+    case "enter":
+      e.preventDefault();
+      saveCurrent(cmd);
+      break;
+    case "s":
+      if (cmd) { e.preventDefault(); saveCurrent(false); }
+      break;
+    case "i": {
+      const t = document.getElementById("ignoreToggle");
+      if (t) { t.checked = !t.checked; markDirty(); }
+      break;
+    }
+    case "a": addItemRow(); markDirty(); break;
+    case "g": state.viewMode = "grid"; renderAll(); break;
+    case "e": state.evalMode = true; renderAll(); break;
+    case "r": if (state.currentId) queueEval([state.currentId]); break;
+  }
+});
+
+loadSamples(false);
+</script>
+</body>
+</html>
