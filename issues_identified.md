@@ -4,3 +4,5 @@
 4. [ ] Clicking on delete on one of the items deleted the entire plate entries. And nothing is showing up in today's plates on the main page. 
 5. [ ] On the card showing protein carb etc macros bars, the legend on the right is not useful As the bar's themselves have titles about them 
 6. [ ] On the macros bars card, show how many consumed instead of remaining.
+7. [ ] User should be able to update the targets during onboarding - and recalcute the cals, macros, weeks to reach target etc.. flush this out as a good experience.
+8. [ ] As I enter each mean, I want a sum of the cals macros in that meal.. rn I am adding it in my brain, not present on the scree.
