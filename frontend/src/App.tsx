@@ -12,7 +12,7 @@ import Profile from './pages/Profile'
 import HistoryLog from './pages/HistoryLog'
 import DayDetail from './pages/DayDetail'
 
-const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL?.includes('placeholder')
+const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === 'true'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { session, isLoading, isOnboarded } = useAuthStore()

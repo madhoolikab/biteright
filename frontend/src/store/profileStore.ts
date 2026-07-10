@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import api from '../api/client'
 
-const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL?.includes('placeholder')
+const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === 'true'
 
 interface Profile {
   id: string
