@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, parseISO, differenceInCalendarDays } from 'date-fns'
+import { CalendarPlus } from 'lucide-react'
 import { BarChart, Bar, Cell, XAxis, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts'
 import { useDailyLogStore, type DaySummary, type HistoryTargets } from '../store/dailyLogStore'
 import { useProfileStore } from '../store/profileStore'
@@ -28,6 +29,8 @@ export default function HistoryLog() {
   const { history, historyTargets, historyLoading, fetchHistory, dashboard, fetchDashboard } = useDailyLogStore()
   const { profile, fetchProfile } = useProfileStore()
   const [range, setRange] = useState<7 | 14 | 30>(7)
+  const pastDayInputRef = useRef<HTMLInputElement>(null)
+  const todayIso = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
     fetchHistory(30)
@@ -84,8 +87,31 @@ export default function HistoryLog() {
       <header className="mb-6">
         <h1 className="font-display text-3xl text-foreground leading-tight">Your Log</h1>
         <p className="mt-1 text-sm text-muted-foreground">Every day counts, {firstName} — here's your story so far.</p>
-        <div className="mt-3">
+        <div className="mt-3 flex items-center gap-3">
           <StreakBadge days={dashboard?.current_streak ?? 0} />
+          <button
+            type="button"
+            onClick={() => {
+              const el = pastDayInputRef.current
+              if (!el) return
+              if (el.showPicker) el.showPicker()
+              else el.click()
+            }}
+            className="flex items-center gap-1.5 rounded-2xl border border-border bg-card px-3 py-2 text-xs font-semibold text-primary active:scale-[0.98] transition-transform"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            Log a past day
+            <input
+              ref={pastDayInputRef}
+              type="date"
+              max={todayIso}
+              onChange={(e) => {
+                if (e.target.value) navigate(`/history/${e.target.value}`)
+              }}
+              className="sr-only"
+              aria-label="Pick a past day to log"
+            />
+          </button>
         </div>
       </header>
 
@@ -111,7 +137,7 @@ export default function HistoryLog() {
                 return (
                   <button
                     key={iso}
-                    onClick={() => day && navigate(`/history/${iso}`)}
+                    onClick={() => navigate(`/history/${iso}`)}
                     className="flex flex-col items-center gap-1.5"
                     aria-label={format(parseISO(iso), 'EEEE MMM d')}
                   >
