@@ -30,7 +30,7 @@ A personal nutrition tracking web app that productizes a real Claude conversatio
 backend/
   app/
     config.py          — pydantic-settings, loads env vars
-    dependencies.py    — JWT validation (PyJWT, HS256), Supabase client factory
+    dependencies.py    — JWT validation via Supabase SDK (db.auth.get_user), Supabase client factory
     main.py            — FastAPI app, CORS, mounts 6 routers under /api/v1
     models/
       schemas.py       — all Pydantic request/response models
@@ -156,7 +156,7 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 
 1. Frontend uses Supabase JS SDK for Google OAuth only
 2. Supabase session JWT is attached to all API calls via Axios interceptor
-3. Backend validates JWT with PyJWT (HS256, SUPABASE_JWT_SECRET), extracts user_id from "sub"
+3. Backend validates JWT via Supabase SDK (`db.auth.get_user`), extracts user_id from the returned user object
 4. Frontend talks to Supabase ONLY for auth — all data goes through FastAPI
 
 ## Environment variables
