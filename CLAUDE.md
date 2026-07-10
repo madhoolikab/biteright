@@ -22,7 +22,7 @@ A personal nutrition tracking web app that productizes a real Claude conversatio
 - **Node 22** / npm
 - **Frontend dev server**: `cd frontend && npm run dev` → port 5173
 - **Backend dev server**: `cd backend && uvicorn app.main:app --reload` → port 8000
-- **DEV_MODE**: When `VITE_SUPABASE_URL` contains "placeholder", auth is bypassed and stores return mock data so the UI can be previewed without Supabase or a backend
+- **DEV_MODE**: When `VITE_DEV_MODE=true`, auth is bypassed and stores return mock data so the UI can be previewed without Supabase or a backend.
 
 ## Project structure
 
