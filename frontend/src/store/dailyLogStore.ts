@@ -201,7 +201,7 @@ interface DailyLogState {
     source?: string
   }>) => Promise<void>
   deleteMealItem: (itemId: string, date: string) => Promise<void>
-  toggleFavourite: (itemId: string) => Promise<void>
+  toggleFavourite: (itemId: string, date: string, scope: 'dashboard' | 'dayDetail') => Promise<void>
 }
 
 export const useDailyLogStore = create<DailyLogState>((set, get) => ({
@@ -315,9 +315,11 @@ export const useDailyLogStore = create<DailyLogState>((set, get) => ({
     await get().fetchDashboard(date)
   },
 
-  toggleFavourite: async (itemId) => {
+  toggleFavourite: async (itemId, date, scope) => {
     if (DEV_MODE) return
     await api.post(`/meals/${itemId}/favourite`)
+    if (scope === 'dashboard') await get().fetchDashboard(date)
+    else await get().fetchDayDetail(date)
   },
 }))
 

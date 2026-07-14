@@ -22,6 +22,7 @@ export default function DayDetail() {
     addDayWater,
     removeDayWater,
     logDayWeight,
+    toggleFavourite,
   } = useDailyLogStore()
 
   const [editing, setEditing] = useState<MealItem | null>(null)
@@ -71,6 +72,15 @@ export default function DayDetail() {
       toast.success('Removed')
     } catch {
       toast.error("Couldn't remove item")
+    }
+  }
+
+  async function handleFavourite(itemId: string) {
+    try {
+      await toggleFavourite(itemId, date, 'dayDetail')
+      toast.success('Updated')
+    } catch {
+      toast.error("Couldn't update favourite")
     }
   }
 
@@ -140,6 +150,7 @@ export default function DayDetail() {
                 key={slot.meal_type}
                 slot={slot}
                 defaultOpen={i === loggedSlots.length - 1}
+                onFavourite={(id) => handleFavourite(id)}
                 onRemove={handleRemoveItem}
                 onEdit={(item) => setEditing(item)}
               />
