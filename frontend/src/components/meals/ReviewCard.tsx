@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Card from '../shared/Card'
 import { MEAL_UNITS, scaleItem, unitLabel, type ScalableItem } from '../../lib/unitConversion'
 
@@ -18,14 +18,19 @@ const MACRO_FIELDS = [
 interface ReviewCardProps {
   item: ReviewItem
   justUpdated?: boolean
+  refining?: boolean
   onChange: (item: ReviewItem) => void
   onDelete: () => void
+  onRename?: (oldName: string, newName: string) => void
 }
 
-export default function ReviewCard({ item, justUpdated = false, onChange, onDelete }: ReviewCardProps) {
+export default function ReviewCard({ item, justUpdated = false, refining = false, onChange, onDelete, onRename }: ReviewCardProps) {
   // Accumulated factor for user-edited fields since their last edit — applied
   // only if the user opts in via the "scale your edits too?" chip.
   const [pendingFactor, setPendingFactor] = useState(1)
+  // Tracks the last name we actually sent for re-estimation, so blur only
+  // fires a refine call when the name really changed since the last commit.
+  const committedName = useRef(item.item_name)
 
   const markEdited = (field: string) =>
     item.user_edited_fields.includes(field)
@@ -67,8 +72,19 @@ export default function ReviewCard({ item, justUpdated = false, onChange, onDele
         <input
           value={item.item_name}
           onChange={(e) => onChange({ ...item, item_name: e.target.value, user_edited_fields: markEdited('item_name') })}
-          className="font-medium text-lg bg-transparent border-none focus:outline-none flex-1 min-w-0"
+          onBlur={(e) => {
+            const newName = e.target.value.trim()
+            if (newName && newName !== committedName.current) {
+              onRename?.(committedName.current, newName)
+              committedName.current = newName
+            }
+          }}
+          disabled={refining}
+          className="font-medium text-lg bg-transparent border-none focus:outline-none flex-1 min-w-0 disabled:opacity-60"
         />
+        {refining && (
+          <span className="text-[10px] font-semibold text-primary shrink-0 animate-pulse">Recalculating…</span>
+        )}
         <div className="flex items-center gap-1.5 shrink-0">
           <span className={`text-xs px-2 py-0.5 rounded-full ${
             item.confidence === 'high' ? 'bg-secondary-soft text-secondary' :

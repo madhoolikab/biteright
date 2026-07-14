@@ -4,6 +4,8 @@ import { format, parseISO } from 'date-fns'
 import { ChevronLeft, Plus, Minus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useDailyLogStore, type MealItem } from '../store/dailyLogStore'
+import { useProfileStore } from '../store/profileStore'
+import { refineItemName } from '../api/mealRefine'
 import CalorieCard from '../components/dashboard/CalorieCard'
 import WaterTracker from '../components/dashboard/WaterTracker'
 import PlateCard from '../components/dashboard/PlateCard'
@@ -24,6 +26,7 @@ export default function DayDetail() {
     logDayWeight,
     toggleFavourite,
   } = useDailyLogStore()
+  const { profile } = useProfileStore()
 
   const [editing, setEditing] = useState<MealItem | null>(null)
   const [waterBusy, setWaterBusy] = useState(false)
@@ -205,6 +208,30 @@ export default function DayDetail() {
               toast.success('Updated')
             } catch {
               toast.error("Couldn't save changes")
+            }
+          }}
+          onRename={async (oldName, newName) => {
+            try {
+              return await refineItemName(
+                {
+                  item_name: oldName,
+                  quantity: editing.quantity ?? 1,
+                  unit: editing.unit ?? 'piece',
+                  estimated_grams: editing.portion_grams ?? 0,
+                  calories: editing.calories,
+                  calorie_low: editing.calorie_low ?? editing.calories * 0.85,
+                  calorie_high: editing.calorie_high ?? editing.calories * 1.15,
+                  carbs_g: editing.carbs_g ?? 0,
+                  protein_g: editing.protein_g ?? 0,
+                  fat_g: editing.fat_g ?? 0,
+                  fibre_g: editing.fibre_g ?? 0,
+                },
+                newName,
+                profile,
+                (editing.user_edited_fields ?? []).filter((f) => f !== 'item_name'),
+              )
+            } catch {
+              toast.error("Couldn't re-estimate — numbers left as-is")
             }
           }}
         />

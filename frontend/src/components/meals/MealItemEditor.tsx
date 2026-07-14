@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { X, Minus, Plus } from 'lucide-react'
 import type { MealItem, MealItemUpdate } from '../../store/dailyLogStore'
 import { MEAL_UNITS, scaleItem, unitLabel, type ScalableItem } from '../../lib/unitConversion'
+import type { RefinedItem } from '../../api/mealRefine'
 import Button from '../shared/Button'
 
 interface Props {
   item: MealItem
   onSave: (updates: MealItemUpdate) => Promise<void> | void
   onClose: () => void
+  onRename?: (oldName: string, newName: string) => Promise<RefinedItem | void>
 }
 
 /**
@@ -16,8 +18,10 @@ interface Props {
  * user has explicitly typed — those get recorded in user_edited_fields so future
  * re-estimates leave them alone too.
  */
-export default function MealItemEditor({ item, onSave, onClose }: Props) {
+export default function MealItemEditor({ item, onSave, onClose, onRename }: Props) {
   const [name, setName] = useState(item.item_name)
+  const committedName = useRef(item.item_name)
+  const [renaming, setRenaming] = useState(false)
   const [quantity, setQuantity] = useState<number>(item.quantity ?? 1)
   const [unit, setUnit] = useState<string>(item.unit ?? 'piece')
   const [calories, setCalories] = useState<number>(Math.round(item.calories))
@@ -68,6 +72,30 @@ export default function MealItemEditor({ item, onSave, onClose }: Props) {
   }
   const changeUnit = (nextUnit: string) => applyScale(quantity, nextUnit)
 
+  // Dish name was wrong — re-estimate nutrition for the corrected dish, but
+  // never overwrite fields the user has already manually corrected.
+  const handleNameBlur = async () => {
+    const newName = name.trim()
+    if (!onRename || !newName || newName === committedName.current) return
+    setRenaming(true)
+    try {
+      const refined = await onRename(committedName.current, newName)
+      committedName.current = newName
+      if (refined) {
+        if (!edited.includes('calories')) setCalories(Math.round(refined.calories))
+        if (!edited.includes('calorie_low')) setCalLow(Math.round(refined.calorie_low))
+        if (!edited.includes('calorie_high')) setCalHigh(Math.round(refined.calorie_high))
+        if (!edited.includes('carbs_g')) setCarbs(Math.round(refined.carbs_g))
+        if (!edited.includes('protein_g')) setProtein(Math.round(refined.protein_g))
+        if (!edited.includes('fat_g')) setFat(Math.round(refined.fat_g))
+        if (!edited.includes('fibre_g')) setFibre(Math.round(refined.fibre_g))
+        setGrams(Math.round(refined.estimated_grams))
+      }
+    } finally {
+      setRenaming(false)
+    }
+  }
+
   const save = async () => {
     setSaving(true)
     try {
@@ -108,8 +136,13 @@ export default function MealItemEditor({ item, onSave, onClose }: Props) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1.5 mb-4 w-full px-4 py-3 border border-border rounded-2xl text-sm focus:outline-none focus:border-primary"
+          onBlur={handleNameBlur}
+          disabled={renaming}
+          className="mt-1.5 mb-4 w-full px-4 py-3 border border-border rounded-2xl text-sm focus:outline-none focus:border-primary disabled:opacity-60"
         />
+        {renaming && (
+          <p className="-mt-3 mb-4 text-[11px] font-semibold text-primary animate-pulse">Recalculating nutrition…</p>
+        )}
 
         {/* Portion */}
         <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">Portion</label>
@@ -155,7 +188,7 @@ export default function MealItemEditor({ item, onSave, onClose }: Props) {
           </p>
         )}
 
-        <Button onClick={save} className="w-full mt-5" disabled={saving}>
+        <Button onClick={save} className="w-full mt-5" disabled={saving || renaming}>
           {saving ? 'Saving…' : 'Save changes'}
         </Button>
       </div>

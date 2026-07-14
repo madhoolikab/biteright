@@ -10,6 +10,7 @@ import api from '../api/client'
 import Button from '../components/shared/Button'
 import Card from '../components/shared/Card'
 import ReviewCard, { type ReviewItem } from '../components/meals/ReviewCard'
+import { refineItemName } from '../api/mealRefine'
 
 interface ClarifyingQuestion {
   item_index: number
@@ -62,6 +63,7 @@ export default function MealLog() {
   const [items, setItems] = useState<ReviewItem[]>([])
   const [questions, setQuestions] = useState<ClarifyingQuestion[]>([])
   const [justUpdated, setJustUpdated] = useState<number[]>([])
+  const [renaming, setRenaming] = useState<number[]>([])
   const answersRef = useRef<Array<{ item_index: number; field: string; answer: string }>>([])
 
   const [favourites, setFavourites] = useState<FavouriteItem[]>([])
@@ -179,6 +181,35 @@ export default function MealLog() {
       // Refinement is best-effort — the original estimate stays usable
     } finally {
       setIsRefining(false)
+    }
+  }
+
+  // Dish name was wrong — re-estimate nutrition for the corrected dish, keeping
+  // the same portion. Any macro/calorie the user already hand-corrected stays put.
+  const handleRename = async (i: number, oldName: string, newName: string) => {
+    if (!newName || newName === oldName) return
+    setRenaming((r) => [...r, i])
+    try {
+      const item = items[i]
+      const refined = await refineItemName(
+        item,
+        newName,
+        profile,
+        item.user_edited_fields.filter((f) => f !== 'item_name'),
+      )
+      setItems((its) =>
+        its.map((it, j) =>
+          j === i
+            ? { ...it, ...refined, item_name: newName, user_edited_fields: it.user_edited_fields }
+            : it
+        )
+      )
+      setJustUpdated([i])
+      setTimeout(() => setJustUpdated([]), 2000)
+    } catch {
+      // Best-effort — keep whatever numbers were there before the rename
+    } finally {
+      setRenaming((r) => r.filter((x) => x !== i))
     }
   }
 
@@ -568,8 +599,10 @@ export default function MealLog() {
               key={i}
               item={item}
               justUpdated={justUpdated.includes(i)}
+              refining={renaming.includes(i)}
               onChange={(updated) => setItems((its) => its.map((it, j) => (j === i ? updated : it)))}
               onDelete={() => setItems((its) => its.filter((_, j) => j !== i))}
+              onRename={(oldName, newName) => handleRename(i, oldName, newName)}
             />
           ))}
           <div className="bg-primary-soft rounded-2xl p-3 text-center">

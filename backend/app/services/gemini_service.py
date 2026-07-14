@@ -80,9 +80,10 @@ Rules:
 2. Tighten calorie_low/calorie_high now that you know more; update confidence if warranted
 3. NEVER change fields the user has manually corrected: {user_edited_json} (keys are item indexes, values are the protected field names)
 4. Return "clarifying_questions": [] — do not ask anything further
+5. If an answer's field is "item_name", the item was misidentified — the item_name in the previous analysis JSON already reflects the corrected dish. Re-derive estimated_grams, calories, calorie_low/high, and all macros for that dish from scratch (keep the same quantity/unit unless clearly wrong for the new dish) rather than nudging the old numbers
 
 Respond ONLY with valid JSON in this exact format:
-""" + ITEMS_JSON_SCHEMA
+"""
 
 
 def _get_model():
@@ -173,7 +174,7 @@ async def refine_meal_analysis(req: MealRefineRequest) -> MealAnalysisResponse:
         items_json=json.dumps([i.model_dump() for i in req.items]),
         answers_json=json.dumps([a.model_dump() for a in req.answers]),
         user_edited_json=json.dumps(req.user_edited_fields or {}),
-    )
+    ) + ITEMS_JSON_SCHEMA
     response = model.generate_content(
         prompt,
         generation_config=genai.GenerationConfig(
