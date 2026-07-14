@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from datetime import date
 
-MEAL_UNITS = ("piece", "cup", "tbsp", "tsp", "bowl", "katori", "glass", "gram", "ml")
+MEAL_UNITS = ("piece", "cup", "tbsp", "tsp", "gram", "ml", "glass")
 
 
 # --- Profile ---

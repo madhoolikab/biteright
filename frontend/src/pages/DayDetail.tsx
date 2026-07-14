@@ -156,7 +156,7 @@ export default function DayDetail() {
           disabled={waterBusy}
           className="mt-2 flex items-center gap-1 mx-auto text-[11px] font-semibold text-muted-foreground disabled:opacity-40"
         >
-          <Minus className="h-3 w-3" /> Remove a glass
+          <Minus className="h-3 w-3" /> Remove 250ml
         </button>
       )}
 

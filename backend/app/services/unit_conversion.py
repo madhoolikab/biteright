@@ -9,9 +9,7 @@ from typing import List, Optional
 # "piece" is intentionally absent: piece weight varies per food (idli vs dosa),
 # so it is derived from the item's own estimated_grams / quantity.
 UNIT_GRAMS = {
-    "katori": 150,
     "cup": 240,
-    "bowl": 250,
     "glass": 250,
     "tbsp": 15,
     "tsp": 5,

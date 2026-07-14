@@ -111,14 +111,14 @@ const MOCK_DASHBOARD: DashboardData = {
     {
       meal_type: 'breakfast', total_calories: 420, item_count: 2,
       items: [
-        { id: 'b1', meal_type: 'breakfast', item_name: 'Poha with peanuts', calories: 280, carbs_g: 48, protein_g: 8, fat_g: 7, fibre_g: 3, portion_grams: 180, portion_desc: '1 bowl', quantity: null, unit: null, calorie_low: null, calorie_high: null, user_edited_fields: [], is_estimate:true, is_favourite: true, source: 'photo' },
+        { id: 'b1', meal_type: 'breakfast', item_name: 'Poha with peanuts', calories: 280, carbs_g: 48, protein_g: 8, fat_g: 7, fibre_g: 3, portion_grams: 180, portion_desc: '1 cup', quantity: null, unit: null, calorie_low: null, calorie_high: null, user_edited_fields: [], is_estimate:true, is_favourite: true, source: 'photo' },
         { id: 'b2', meal_type: 'breakfast', item_name: 'Masala chai', calories: 140, carbs_g: 18, protein_g: 4, fat_g: 5, fibre_g: 0, portion_grams: 200, portion_desc: '1 cup', quantity: null, unit: null, calorie_low: null, calorie_high: null, user_edited_fields: [], is_estimate:false, is_favourite: false, source: 'manual' },
       ],
     },
     {
       meal_type: 'lunch', total_calories: 580, item_count: 3,
       items: [
-        { id: 'l1', meal_type: 'lunch', item_name: 'Dal tadka', calories: 220, carbs_g: 32, protein_g: 12, fat_g: 6, fibre_g: 5, portion_grams: 200, portion_desc: '1 katori', quantity: null, unit: null, calorie_low: null, calorie_high: null, user_edited_fields: [], is_estimate:true, is_favourite: false, source: 'photo' },
+        { id: 'l1', meal_type: 'lunch', item_name: 'Dal tadka', calories: 220, carbs_g: 32, protein_g: 12, fat_g: 6, fibre_g: 5, portion_grams: 200, portion_desc: '1 cup', quantity: null, unit: null, calorie_low: null, calorie_high: null, user_edited_fields: [], is_estimate:true, is_favourite: false, source: 'photo' },
         { id: 'l2', meal_type: 'lunch', item_name: 'Jeera rice', calories: 210, carbs_g: 42, protein_g: 4, fat_g: 3, fibre_g: 1, portion_grams: 150, portion_desc: '1 cup', quantity: null, unit: null, calorie_low: null, calorie_high: null, user_edited_fields: [], is_estimate:false, is_favourite: true, source: 'manual' },
         { id: 'l3', meal_type: 'lunch', item_name: 'Mixed vegetable sabzi', calories: 150, carbs_g: 14, protein_g: 3, fat_g: 8, fibre_g: 4, portion_grams: 100, portion_desc: '½ cup', quantity: null, unit: null, calorie_low: null, calorie_high: null, user_edited_fields: [], is_estimate:true, is_favourite: false, source: 'photo' },
       ],

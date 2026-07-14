@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, Minus, Plus } from 'lucide-react'
 import type { MealItem, MealItemUpdate } from '../../store/dailyLogStore'
-import { MEAL_UNITS, scaleItem, type ScalableItem } from '../../lib/unitConversion'
+import { MEAL_UNITS, scaleItem, unitLabel, type ScalableItem } from '../../lib/unitConversion'
 import Button from '../shared/Button'
 
 interface Props {
@@ -129,7 +129,7 @@ export default function MealItemEditor({ item, onSave, onClose }: Props) {
             className="flex-1 px-3 py-3 border border-border rounded-2xl text-sm bg-card focus:outline-none focus:border-primary"
           >
             {MEAL_UNITS.map((u) => (
-              <option key={u} value={u}>{u}</option>
+              <option key={u} value={u}>{unitLabel(u)}</option>
             ))}
           </select>
         </div>

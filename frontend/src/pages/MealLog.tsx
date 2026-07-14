@@ -44,6 +44,7 @@ export default function MealLog() {
   const [tab, setTab] = useState<Tab>('photo')
   const [mealType, setMealType] = useState(searchParams.get('meal') || 'breakfast')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isLoadingPhoto, setIsLoadingPhoto] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [error, setError] = useState('')
 
@@ -102,18 +103,19 @@ export default function MealLog() {
   }
 
   const handlePhoto = async (file: File) => {
-    setIsAnalyzing(true)
+    setIsLoadingPhoto(true)
+    setError('')
     try {
       const compressed = await imageCompression(file, { maxWidthOrHeight: 1024, maxSizeMB: 1 })
       const reader = new FileReader()
       reader.onload = () => {
         const base64 = (reader.result as string).split(',')[1]
         setPhotoBase64(base64)
-        runAnalysis(base64, caption)
+        setIsLoadingPhoto(false)
       }
       reader.readAsDataURL(compressed)
     } catch {
-      setIsAnalyzing(false)
+      setIsLoadingPhoto(false)
       setError("Couldn't read that image. Try another photo or describe your meal instead.")
     }
   }
@@ -314,26 +316,54 @@ export default function MealLog() {
                 />
                 <MicButton />
               </div>
-              <Card
-                onClick={() => !isAnalyzing && fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-border cursor-pointer hover:border-primary/40"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mb-3" />
-                    <p className="text-muted-foreground">Analyzing your meal...</p>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-12 h-12 text-muted-foreground mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <p className="font-medium">Take or upload a photo</p>
-                    <p className="text-sm text-muted-foreground mt-1">We'll identify items and estimate calories</p>
-                  </>
-                )}
-              </Card>
+
+              {photoBase64 ? (
+                <div className="space-y-3">
+                  <div className="relative rounded-3xl overflow-hidden">
+                    <img
+                      src={`data:image/jpeg;base64,${photoBase64}`}
+                      alt="Selected meal"
+                      className="w-full max-h-64 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPhotoBase64('')}
+                      disabled={isAnalyzing}
+                      className="absolute top-2 right-2 px-3 py-1.5 rounded-full bg-card/90 backdrop-blur text-xs font-semibold disabled:opacity-50"
+                    >
+                      Retake
+                    </button>
+                  </div>
+                  <Button
+                    onClick={() => runAnalysis(photoBase64, caption)}
+                    className="w-full"
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? 'Analyzing...' : 'Analyze meal'}
+                  </Button>
+                </div>
+              ) : (
+                <Card
+                  onClick={() => !isLoadingPhoto && fileInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-border cursor-pointer hover:border-primary/40"
+                >
+                  {isLoadingPhoto ? (
+                    <>
+                      <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mb-3" />
+                      <p className="text-muted-foreground">Loading photo...</p>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-12 h-12 text-muted-foreground mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <p className="font-medium">Take or upload a photo</p>
+                      <p className="text-sm text-muted-foreground mt-1">Add a note above if you like, then we'll identify items and estimate calories</p>
+                    </>
+                  )}
+                </Card>
+              )}
             </div>
           )}
 

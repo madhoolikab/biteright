@@ -1,18 +1,27 @@
 // Mirror of backend/app/services/unit_conversion.py — keep the two in sync.
 
-export const MEAL_UNITS = ['piece', 'cup', 'tbsp', 'tsp', 'bowl', 'katori', 'glass', 'gram', 'ml'] as const
+export const MEAL_UNITS = ['piece', 'cup', 'tbsp', 'tsp', 'gram', 'ml', 'glass'] as const
 export type MealUnit = (typeof MEAL_UNITS)[number]
 
 // Approximate grams per 1 unit. "piece" is derived per-item (estimated_grams / quantity).
-const UNIT_GRAMS: Partial<Record<string, number>> = {
-  katori: 150,
+export const UNIT_GRAMS: Partial<Record<string, number>> = {
   cup: 240,
-  bowl: 250,
   glass: 250,
   tbsp: 15,
   tsp: 5,
   gram: 1,
   ml: 1,
+}
+
+// Units measured in fluid volume — show their size in ml rather than g.
+const LIQUID_UNITS = new Set(['glass', 'ml'])
+
+/** Human label for a unit dropdown option, e.g. "cup (240g)", "glass (250ml)", "piece". */
+export function unitLabel(unit: string): string {
+  const grams = UNIT_GRAMS[unit]
+  if (!grams) return unit
+  if (unit === 'ml') return unit
+  return `${unit} (${grams}${LIQUID_UNITS.has(unit) ? 'ml' : 'g'})`
 }
 
 export interface ScalableItem {

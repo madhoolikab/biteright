@@ -14,7 +14,7 @@ ITEMS_JSON_SCHEMA = """{
       "item_name": "string",
       "portion_description": "string",
       "quantity": number,
-      "unit": "piece" | "cup" | "tbsp" | "tsp" | "bowl" | "katori" | "glass" | "gram" | "ml",
+      "unit": "piece" | "cup" | "tbsp" | "tsp" | "gram" | "ml" | "glass",
       "estimated_grams": number,
       "calories": number,
       "calorie_low": number,
@@ -42,8 +42,8 @@ Identify each food item from the meal photo and/or the user's description below.
 
 For each item, provide:
 - item_name: common Indian name (e.g., "Pesarattu" not "green gram crepe", "Idli" not "steamed rice cake")
-- portion_description: the portion in household terms (e.g., "2 medium idlis", "1 katori of sambar")
-- quantity + unit: the portion as a number and a household unit from the allowed list. Prefer natural units: countable items (idli, dosa, roti) = "piece"; curries/dal/rice = "katori" or "bowl"; oil/ghee/chutney = "tbsp"/"tsp"; drinks = "cup" or "glass"
+- portion_description: the portion in household terms (e.g., "2 medium idlis", "1 cup of sambar")
+- quantity + unit: the portion as a number and a household unit from the allowed list. Prefer natural units: countable items (idli, dosa, roti) = "piece"; curries/dal/rice = "cup" (use fractional amounts like 0.5 or 1.5 as needed); oil/ghee/chutney = "tbsp"/"tsp"; drinks like water, buttermilk/chaas, or ragi java = "glass"; tea/coffee = "cup"
 - estimated_grams: approximate total weight in grams (consistent with quantity x unit)
 - calories: best point estimate in kilocalories
 - calorie_low / calorie_high: an honest error range around the estimate. Narrow (~±10%) when confidence is high, wide (~±25-35%) when low — variable oil, hidden ghee, or ambiguous portions widen the range
