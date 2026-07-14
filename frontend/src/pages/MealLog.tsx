@@ -25,6 +25,10 @@ interface FavouriteItem {
   protein_g: number | null
   fat_g: number | null
   fibre_g: number | null
+  portion_grams: number | null
+  portion_desc: string | null
+  quantity: number | null
+  unit: string | null
 }
 
 type Tab = 'photo' | 'describe' | 'favourites'
@@ -238,6 +242,10 @@ export default function MealLog() {
         protein_g: item.protein_g ?? undefined,
         fat_g: item.fat_g ?? undefined,
         fibre_g: item.fibre_g ?? undefined,
+        portion_grams: item.portion_grams ?? undefined,
+        portion_desc: item.portion_desc ?? undefined,
+        quantity: item.quantity ?? undefined,
+        unit: item.unit ?? undefined,
         source: 'favourite',
       })))
       afterLog()
