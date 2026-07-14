@@ -8,20 +8,22 @@ import { useProfileStore } from '../store/profileStore'
 import StreakBadge from '../components/shared/StreakBadge'
 import { fmtApprox } from '../lib/format'
 
-type Status = 'none' | 'on' | 'off'
+type Status = 'none' | 'logged'
 
-// Forgiving, non-judgmental: on-track (mint) if within 85–110% of the goal,
-// off (amber) if noticeably under or over, grey if nothing was logged.
-function dayStatus(cal: number, goal: number): Status {
-  if (!cal) return 'none'
-  if (cal >= goal * 0.85 && cal <= goal * 1.1) return 'on'
-  return 'off'
+// No "on track" / "off" judgment — this is just awareness of what was logged
+// against the goal, not a verdict. Grey means nothing was logged that day.
+function dayStatus(cal: number): Status {
+  return cal > 0 ? 'logged' : 'none'
 }
 
 const STATUS_COLOR: Record<Status, string> = {
   none: 'var(--color-muted)',
-  on: 'var(--color-secondary)',
-  off: 'var(--color-warning)',
+  logged: 'var(--color-accent)',
+}
+
+const STATUS_TEXT_COLOR: Record<Status, string> = {
+  none: 'var(--color-muted-foreground)',
+  logged: '#fff',
 }
 
 export default function HistoryLog() {
@@ -61,10 +63,10 @@ export default function HistoryLog() {
           iso,
           label: format(parseISO(iso), range > 7 ? 'd' : 'EEEEE'),
           calories: Math.round(d?.total_calories ?? 0),
-          status: dayStatus(d?.total_calories ?? 0, goal),
+          status: dayStatus(d?.total_calories ?? 0),
         }
       }),
-    [byDate, range, goal]
+    [byDate, range]
   )
 
   const firstName = profile?.name?.split(' ')[0] || 'friend'
@@ -97,7 +99,7 @@ export default function HistoryLog() {
               if (el.showPicker) el.showPicker()
               else el.click()
             }}
-            className="flex items-center gap-1.5 rounded-2xl border border-border bg-card px-3 py-2 text-xs font-semibold text-primary active:scale-[0.98] transition-transform"
+            className="flex items-center gap-1.5 rounded-full bg-primary-soft px-3.5 py-1.5 text-xs font-semibold text-primary active:scale-[0.98] transition-transform"
           >
             <CalendarPlus className="h-4 w-4" />
             Log a past day
@@ -133,7 +135,8 @@ export default function HistoryLog() {
             </div>
             <div className="flex justify-between">
               {week.map(({ iso, day }) => {
-                const status = dayStatus(day?.total_calories ?? 0, goal)
+                const status = dayStatus(day?.total_calories ?? 0)
+                const isToday = iso === todayIso
                 return (
                   <button
                     key={iso}
@@ -146,9 +149,13 @@ export default function HistoryLog() {
                     </span>
                     <span
                       className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold num"
-                      style={{ backgroundColor: STATUS_COLOR[status], color: status === 'none' ? 'var(--color-muted-foreground)' : '#fff' }}
+                      style={{
+                        backgroundColor: isToday ? 'var(--color-card)' : STATUS_COLOR[status],
+                        color: isToday ? 'var(--color-accent)' : STATUS_TEXT_COLOR[status],
+                        boxShadow: isToday ? 'inset 0 0 0 2px var(--color-accent)' : 'none',
+                      }}
                     >
-                      {status === 'none' ? '·' : format(parseISO(iso), 'd')}
+                      {status === 'none' && !isToday ? '·' : format(parseISO(iso), 'd')}
                     </span>
                   </button>
                 )
@@ -195,7 +202,7 @@ export default function HistoryLog() {
               </ResponsiveContainer>
             </div>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              Dashed line = your {goal} kcal goal. Mint = on track, yellow = off, and that's all okay.
+              Dashed line = your {goal} kcal goal.
             </p>
           </section>
 
@@ -217,16 +224,21 @@ export default function HistoryLog() {
 }
 
 function DayRow({ day, targets, goal, onOpen }: { day: DaySummary; targets: HistoryTargets | null; goal: number; onOpen: () => void }) {
-  const status = dayStatus(day.total_calories, goal)
+  const status = dayStatus(day.total_calories)
   const pct = Math.min(100, Math.round((day.total_calories / Math.max(1, goal)) * 100))
   const d = parseISO(day.log_date)
   const rel = relativeLabel(day.log_date)
+  const isToday = rel === 'Today'
 
   return (
     <button
       onClick={onOpen}
-      className="w-full text-left rounded-3xl bg-card border border-border/60 p-4 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)] active:scale-[0.99] transition-transform"
+      className="relative w-full text-left overflow-hidden rounded-3xl bg-card border border-border/60 p-4 pl-5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)] active:scale-[0.99] transition-transform"
     >
+      <span
+        className="absolute left-0 top-0 h-full w-1.5"
+        style={{ backgroundColor: isToday ? 'var(--color-accent)' : 'var(--color-primary)' }}
+      />
       <div className="flex items-center justify-between">
         <div className="min-w-0">
           <p className="font-semibold text-foreground text-sm">{format(d, 'EEE, MMM d')}</p>
@@ -255,7 +267,7 @@ function DayRow({ day, targets, goal, onOpen }: { day: DaySummary; targets: Hist
 
 function MacroChip({ color, label, value, target }: { color: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; value: number; target?: number }) {
   const bg =
-    color === 'protein' ? 'bg-secondary-soft text-secondary'
+    color === 'protein' ? 'bg-primary-soft text-primary'
     : color === 'carbs' ? 'bg-warning-soft text-warning'
     : color === 'fat' ? 'bg-accent-soft text-accent'
     : 'bg-fiber-soft text-fiber'

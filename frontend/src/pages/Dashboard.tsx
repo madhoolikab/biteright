@@ -60,7 +60,7 @@ export default function Dashboard() {
 
   async function handleFavourite(itemId: string) {
     try {
-      await toggleFavourite(itemId)
+      await toggleFavourite(itemId, today, 'dashboard')
       toast.success('Updated')
     } catch {
       toast.error("Couldn't update favourite")

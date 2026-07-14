@@ -17,11 +17,12 @@ const MACRO_FIELDS = [
 
 interface ReviewCardProps {
   item: ReviewItem
+  justUpdated?: boolean
   onChange: (item: ReviewItem) => void
   onDelete: () => void
 }
 
-export default function ReviewCard({ item, onChange, onDelete }: ReviewCardProps) {
+export default function ReviewCard({ item, justUpdated = false, onChange, onDelete }: ReviewCardProps) {
   // Accumulated factor for user-edited fields since their last edit — applied
   // only if the user opts in via the "scale your edits too?" chip.
   const [pendingFactor, setPendingFactor] = useState(1)
@@ -115,11 +116,14 @@ export default function ReviewCard({ item, onChange, onDelete }: ReviewCardProps
 
       {/* Honest calorie range */}
       <div className="flex items-baseline gap-1">
-        <span className="font-display text-xl text-foreground num">
+        <span className={`font-display text-xl text-foreground num ${justUpdated ? 'value-updated' : ''}`}>
           ~{Math.round(item.calorie_low)}–{Math.round(item.calorie_high)}
         </span>
         <span className="text-sm text-muted-foreground">kcal</span>
         {item.user_edited_fields.includes('calories') && <EditedDot />}
+        {justUpdated && (
+          <span className="text-[10px] font-semibold text-secondary ml-1">Updated</span>
+        )}
       </div>
 
       {showScaleChip && (

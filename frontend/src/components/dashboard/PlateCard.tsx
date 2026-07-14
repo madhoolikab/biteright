@@ -22,6 +22,16 @@ export default function PlateCard({ slot, defaultOpen = false, onFavourite, onRe
   const [open, setOpen] = useState(defaultOpen)
   const title = slot.meal_type.charAt(0).toUpperCase() + slot.meal_type.slice(1)
 
+  const subtotal = slot.items.reduce(
+    (acc, it) => ({
+      protein: acc.protein + (it.protein_g ?? 0),
+      carbs: acc.carbs + (it.carbs_g ?? 0),
+      fat: acc.fat + (it.fat_g ?? 0),
+      fibre: acc.fibre + (it.fibre_g ?? 0),
+    }),
+    { protein: 0, carbs: 0, fat: 0, fibre: 0 }
+  )
+
   return (
     <div className="rounded-3xl bg-card border border-border/60 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)] overflow-hidden">
       <button
@@ -37,6 +47,14 @@ export default function PlateCard({ slot, defaultOpen = false, onFavourite, onRe
           <p className="text-[11px] text-muted-foreground num">
             {slot.item_count} {slot.item_count === 1 ? 'item' : 'items'} · ~{Math.round(slot.total_calories)} kcal
           </p>
+          {slot.items.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              <MacroChip color="protein" label="P" value={subtotal.protein} />
+              <MacroChip color="carbs" label="C" value={subtotal.carbs} />
+              <MacroChip color="fat" label="F" value={subtotal.fat} />
+              <MacroChip color="fiber" label="Fib" value={subtotal.fibre} />
+            </div>
+          )}
         </div>
         <ChevronDown
           className={['h-4 w-4 text-muted-foreground transition-transform shrink-0', open ? 'rotate-180' : ''].join(' ')}
@@ -122,7 +140,7 @@ function ItemRow({
 
 function MacroChip({ color, label, value }: { color: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; value: number }) {
   const bg =
-    color === 'protein' ? 'bg-secondary-soft text-secondary'
+    color === 'protein' ? 'bg-primary-soft text-primary'
     : color === 'carbs' ? 'bg-warning-soft text-warning'
     : color === 'fat' ? 'bg-accent-soft text-accent'
     : 'bg-fiber-soft text-fiber'

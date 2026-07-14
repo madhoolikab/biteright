@@ -57,10 +57,13 @@ export default function MealLog() {
   // Review state
   const [items, setItems] = useState<ReviewItem[]>([])
   const [questions, setQuestions] = useState<ClarifyingQuestion[]>([])
+  const [justUpdated, setJustUpdated] = useState<number[]>([])
   const answersRef = useRef<Array<{ item_index: number; field: string; answer: string }>>([])
 
   const [favourites, setFavourites] = useState<FavouriteItem[]>([])
   const [recents, setRecents] = useState<FavouriteItem[]>([])
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  const [isAddingSelected, setIsAddingSelected] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const appendTranscript = (text: string) => {
@@ -159,8 +162,15 @@ export default function MealLog() {
         ...it,
         user_edited_fields: items[i]?.user_edited_fields || [],
       }))
+      const changedIndices = refined
+        .map((it, i) => (Math.round(it.calories) !== Math.round(items[i]?.calories ?? it.calories) ? i : -1))
+        .filter((i) => i >= 0)
       setItems(refined)
       saveCalibration(q, answer, refined)
+      if (changedIndices.length) {
+        setJustUpdated(changedIndices)
+        setTimeout(() => setJustUpdated([]), 2000)
+      }
     } catch {
       // Refinement is best-effort — the original estimate stays usable
     } finally {
@@ -201,19 +211,39 @@ export default function MealLog() {
     afterLog()
   }
 
-  const relogItem = async (item: FavouriteItem) => {
-    await logMealItems([{
-      log_date: targetDate,
-      meal_type: mealType,
-      item_name: item.item_name,
-      calories: item.calories,
-      carbs_g: item.carbs_g ?? undefined,
-      protein_g: item.protein_g ?? undefined,
-      fat_g: item.fat_g ?? undefined,
-      fibre_g: item.fibre_g ?? undefined,
-      source: 'favourite',
-    }])
-    afterLog()
+  const toggleSelected = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const addSelectedItems = async () => {
+    const keyed: Array<[string, FavouriteItem]> = [
+      ...favourites.map((it, i) => [`fav-${i}`, it] as [string, FavouriteItem]),
+      ...recents.map((it, i) => [`rec-${i}`, it] as [string, FavouriteItem]),
+    ]
+    const chosen = keyed.filter(([key]) => selectedKeys.has(key)).map(([, it]) => it)
+    if (!chosen.length) return
+    setIsAddingSelected(true)
+    try {
+      await logMealItems(chosen.map((item) => ({
+        log_date: targetDate,
+        meal_type: mealType,
+        item_name: item.item_name,
+        calories: item.calories,
+        carbs_g: item.carbs_g ?? undefined,
+        protein_g: item.protein_g ?? undefined,
+        fat_g: item.fat_g ?? undefined,
+        fibre_g: item.fibre_g ?? undefined,
+        source: 'favourite',
+      })))
+      afterLog()
+    } finally {
+      setIsAddingSelected(false)
+    }
   }
 
   const resetAnalysis = () => {
@@ -393,39 +423,90 @@ export default function MealLog() {
             </div>
           )}
 
-          {/* Favourites & Recents tab */}
+          {/* Favourites & Recents tab — tap to select, then add all at once */}
           {tab === 'favourites' && (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-20">
               {favourites.length > 0 && (
                 <>
                   <h3 className="font-semibold text-sm">Favourites</h3>
-                  {favourites.map((item, i) => (
-                    <Card key={`fav-${i}`} onClick={() => relogItem(item)} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">{item.item_name}</p>
-                        <p className="text-sm text-muted-foreground num">~{Math.round(item.calories)} kcal</p>
-                      </div>
-                      <span className="text-primary text-sm">+ Log</span>
-                    </Card>
-                  ))}
+                  {favourites.map((item, i) => {
+                    const key = `fav-${i}`
+                    const isSelected = selectedKeys.has(key)
+                    return (
+                      <Card
+                        key={key}
+                        onClick={() => toggleSelected(key)}
+                        className={`flex justify-between items-center transition-colors ${
+                          isSelected ? 'border-primary bg-primary-soft' : ''
+                        }`}
+                      >
+                        <div>
+                          <p className="font-medium">{item.item_name}</p>
+                          <p className="text-sm text-muted-foreground num">~{Math.round(item.calories)} kcal</p>
+                        </div>
+                        <span
+                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-primary border-primary' : 'border-border'
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          )}
+                        </span>
+                      </Card>
+                    )
+                  })}
                 </>
               )}
               {recents.length > 0 && (
                 <>
                   <h3 className="font-semibold text-sm mt-4">Recent</h3>
-                  {recents.map((item, i) => (
-                    <Card key={`rec-${i}`} onClick={() => relogItem(item)} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">{item.item_name}</p>
-                        <p className="text-sm text-muted-foreground num">~{Math.round(item.calories)} kcal</p>
-                      </div>
-                      <span className="text-primary text-sm">+ Log</span>
-                    </Card>
-                  ))}
+                  {recents.map((item, i) => {
+                    const key = `rec-${i}`
+                    const isSelected = selectedKeys.has(key)
+                    return (
+                      <Card
+                        key={key}
+                        onClick={() => toggleSelected(key)}
+                        className={`flex justify-between items-center transition-colors ${
+                          isSelected ? 'border-primary bg-primary-soft' : ''
+                        }`}
+                      >
+                        <div>
+                          <p className="font-medium">{item.item_name}</p>
+                          <p className="text-sm text-muted-foreground num">~{Math.round(item.calories)} kcal</p>
+                        </div>
+                        <span
+                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-primary border-primary' : 'border-border'
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          )}
+                        </span>
+                      </Card>
+                    )
+                  })}
                 </>
               )}
               {!favourites.length && !recents.length && (
                 <p className="text-muted-foreground text-center py-8">No favourites or recent meals yet. Start logging!</p>
+              )}
+              {(favourites.length > 0 || recents.length > 0) && (
+                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-md px-5">
+                  <Button
+                    onClick={addSelectedItems}
+                    className="w-full"
+                    disabled={selectedKeys.size === 0 || isAddingSelected}
+                  >
+                    {isAddingSelected ? 'Adding...' : `Add selected (${selectedKeys.size})`}
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -478,6 +559,7 @@ export default function MealLog() {
             <ReviewCard
               key={i}
               item={item}
+              justUpdated={justUpdated.includes(i)}
               onChange={(updated) => setItems((its) => its.map((it, j) => (j === i ? updated : it)))}
               onDelete={() => setItems((its) => its.filter((_, j) => j !== i))}
             />

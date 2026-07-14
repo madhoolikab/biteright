@@ -108,7 +108,7 @@ Six tables, all with RLS enabled (user sees own data only):
 - **Weeks to goal**: `abs(current_weight_kg - goal_weight_kg) / weekly_rate_kg`, computed for lose/gain only (omitted for maintain)
 - **Unit conversion**: `unit_conversion.py` maps Indian household units (katori, tbsp, bowl, piece, etc.) to grams; `scale_item()` rescales calories/macros proportionally on quantity/unit change, skipping any field listed in `user_edited_fields`
 - **Consistency streak**: consecutive days (ending today, or yesterday if today isn't logged yet) with `total_calories > 0`; computed in `dashboard.py` and returned as `current_streak` on `GET /dashboard/today`
-- **Day adherence status** (Log view, `HistoryLog.tsx` `dayStatus()`): `on` (mint) if calories within 85–110% of goal, `off` (yellow) if noticeably under/over, `none` (grey) if unlogged — deliberately no red/shame colour
+- **Day logged status** (Log view, `HistoryLog.tsx` `dayStatus()`): `logged` (accent pink) if `total_calories > 0`, `none` (grey) if unlogged — no "on track"/"off" verdict against the goal, just visual awareness of what was logged vs. the goal line
 
 ## Design system — Berry Pop (MUST be followed throughout the product)
 
@@ -149,7 +149,7 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 - **One hard warning**: under-eating (<1200 kcal after 7 PM) — gentle nudge, not alarm
 - **Over-eating**: soft message at >115% target — "listen to your hunger from here"
 - **All calorie estimates shown with tilde**: "~430 kcal" — never false precision
-- **Log (history) is encouragement, not audit**: past days shown with mint/yellow/grey adherence dots (never red), consistency celebrated via streak + "X/7 days logged" — missed days are grey, not flagged
+- **Log (history) is encouragement, not audit**: past days shown with accent-pink/grey logged dots — no on-track/off verdict, just awareness of what was logged vs. goal; consistency celebrated via streak + "X/7 days logged" — missed days are grey, not flagged
 - **Past days are editable**: meals (add/edit/delete), water (+/-), and weight can all be corrected retroactively from `DayDetail.tsx` — forgiving by design
 
 ## Auth flow
