@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Card from '../shared/Card'
-import { MEAL_UNITS, scaleItem, type ScalableItem } from '../../lib/unitConversion'
+import { MEAL_UNITS, scaleItem, unitLabel, type ScalableItem } from '../../lib/unitConversion'
 
 export interface ReviewItem extends ScalableItem {
   item_name: string
@@ -108,7 +108,7 @@ export default function ReviewCard({ item, onChange, onDelete }: ReviewCardProps
           onChange={(e) => changePortion(item.quantity, e.target.value)}
           className="rounded-2xl bg-muted px-3 py-1.5 text-sm font-semibold focus:outline-none capitalize"
         >
-          {MEAL_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+          {MEAL_UNITS.map((u) => <option key={u} value={u}>{unitLabel(u)}</option>)}
         </select>
         <span className="text-xs text-muted-foreground num ml-auto">~{Math.round(item.estimated_grams)}g</span>
       </div>

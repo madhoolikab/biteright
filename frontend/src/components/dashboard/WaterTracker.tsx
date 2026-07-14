@@ -60,7 +60,7 @@ export default function WaterTracker({ current, target, onAdd, busy = false }: W
               className="flex items-center justify-center gap-1 rounded-full py-1.5 text-[11px] font-semibold bg-secondary text-secondary-foreground border border-secondary transition-colors disabled:opacity-40 num"
             >
               <Plus className="h-3 w-3" />
-              250
+              250ml
             </button>
             <button
               onClick={() => onAdd(500)}
@@ -68,7 +68,7 @@ export default function WaterTracker({ current, target, onAdd, busy = false }: W
               className="flex items-center justify-center gap-1 rounded-full py-1.5 text-[11px] font-semibold bg-muted text-foreground border-transparent border transition-colors disabled:opacity-40 num"
             >
               <Plus className="h-3 w-3" />
-              500
+              500ml
             </button>
           </div>
         </div>
