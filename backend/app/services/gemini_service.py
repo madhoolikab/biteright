@@ -23,7 +23,12 @@ ITEMS_JSON_SCHEMA = """{
       "protein_g": number,
       "fat_g": number,
       "fibre_g": number,
-      "confidence": "high" | "medium" | "low"
+      "confidence": "high" | "medium" | "low",
+      "basis": {
+        "summary": "one short plain-language line: what you identified + main composition + oil level, e.g. 'ridge gourd, tomato-onion base, moderate oil'. Omit any oil mention for oil-free dishes",
+        "ingredients": ["short list of the assumed components; for cooked-in-oil dishes include one oil entry with a concrete anchor, e.g. 'ridge gourd', 'tomato', 'onion', '~2 tsp oil'. Omit the oil entry for oil-free dishes"],
+        "oil_level": "light" | "medium" | "generous" | "none"
+      }
     }
   ],
   "meal_description": "Brief one-line description of the overall meal",
@@ -49,6 +54,7 @@ For each item, provide:
 - calorie_low / calorie_high: an honest error range around the estimate. Narrow (~±10%) when confidence is high, wide (~±25-35%) when low — variable oil, hidden ghee, or ambiguous portions widen the range
 - carbs_g, protein_g, fat_g, fibre_g: grams
 - confidence: "high", "medium", or "low"
+- basis: show your work so the user can trust the number. "summary" is one short, plain-language line naming what you identified and the assumptions behind the estimate — the main ingredients, the rough composition (e.g. tomato-onion base vs. coconut base), and, for cooked-in-oil dishes, the oil level (this makes clear the oil is already counted in the calories). "ingredients" lists those components in common Indian terms. "oil_level" is your assumed oil use: "light", "medium", or "generous". For dishes made with NO added cooking oil or ghee — boiled, steamed, or raw items (boiled egg white, plain idli, ragi java/porridge, curd, fruit, most beverages) — set "oil_level": "none", do NOT include an oil entry in "ingredients", and do NOT mention oil in "summary". For all other (oil-cooked) dishes, "ingredients" MUST include one entry for the oil/ghee you assumed with a concrete anchor (e.g. "~2 tsp oil"). No jargon, no Western renaming.
 
 Important rules:
 1. Use common Indian food names, not anglicized versions
@@ -62,6 +68,7 @@ Clarifying questions:
 - Populate "clarifying_questions" ONLY when confidence is low or medium on a calorically material item (e.g. oil amount not visible in a curry, ambiguous portion size). At most 2 questions per meal; return [] when nothing material is unclear.
 - Each question: item_index (0-based into items), field (what it clarifies, e.g. "oil_usage_level", "quantity"), a short friendly question, and 2-4 short answer options.
 - Never ask about something the user's description or the calibration context already answers.
+- Never ask an oil question ("oil_usage_level") for a dish cooked/served without oil (boiled, steamed, raw, curd, fruit, beverages) — i.e. one whose basis.oil_level is "none".
 
 Respond ONLY with valid JSON in this exact format:
 """ + ITEMS_JSON_SCHEMA
@@ -81,6 +88,7 @@ Rules:
 3. NEVER change fields the user has manually corrected: {user_edited_json} (keys are item indexes, values are the protected field names)
 4. Return "clarifying_questions": [] — do not ask anything further
 5. If an answer's field is "item_name", the item was misidentified — the item_name in the previous analysis JSON already reflects the corrected dish. Re-derive estimated_grams, calories, calorie_low/high, and all macros for that dish from scratch (keep the same quantity/unit unless clearly wrong for the new dish) rather than nudging the old numbers
+6. Re-emit "basis" for any item whose numbers changed so it stays consistent with the new estimate. When an answer's field is "oil_usage_level", update that item's basis.oil_level to match, adjust the oil entry in basis.ingredients (e.g. "~1 tsp oil" vs "~1 tbsp oil"), and reword basis.summary accordingly. Leave basis unchanged for items you did not touch.
 
 Respond ONLY with valid JSON in this exact format:
 """
@@ -120,17 +128,34 @@ def _build_prompt(
     return prompt
 
 
+def _drop_moot_oil_questions(result: MealAnalysisResponse) -> MealAnalysisResponse:
+    """The model sometimes asks about oil despite the prompt rule against it.
+    Enforce the rule in code rather than trusting it followed the instruction:
+    drop any oil_usage_level question for an item whose own basis says no oil."""
+    result.clarifying_questions = [
+        q
+        for q in result.clarifying_questions
+        if not (
+            q.field == "oil_usage_level"
+            and q.item_index < len(result.items)
+            and result.items[q.item_index].basis
+            and result.items[q.item_index].basis.oil_level == "none"
+        )
+    ]
+    return result
+
+
 def _parse_response(text: str) -> MealAnalysisResponse:
     try:
         data = json.loads(text)
-        return MealAnalysisResponse(**data)
+        return _drop_moot_oil_questions(MealAnalysisResponse(**data))
     except (json.JSONDecodeError, ValueError):
         pass
 
     json_match = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL)
     if json_match:
         data = json.loads(json_match.group(1))
-        return MealAnalysisResponse(**data)
+        return _drop_moot_oil_questions(MealAnalysisResponse(**data))
 
     raise ValueError("Could not parse Gemini response as JSON")
 

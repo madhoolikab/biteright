@@ -3,6 +3,13 @@ import api from '../api/client'
 
 const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === 'true'
 
+// The model's "show your work" for a dish: what it saw and assumed.
+interface Basis {
+  summary?: string | null
+  ingredients?: string[] | null
+  oil_level?: string | null
+}
+
 interface MealItem {
   id: string
   meal_type: string
@@ -22,6 +29,7 @@ interface MealItem {
   is_estimate: boolean
   is_favourite: boolean
   source: string
+  basis?: Basis | null
 }
 
 interface MealSlot {
@@ -199,6 +207,7 @@ interface DailyLogState {
     user_edited_fields?: string[]
     is_estimate?: boolean
     source?: string
+    basis?: Basis | null
   }>) => Promise<void>
   deleteMealItem: (itemId: string, date: string) => Promise<void>
   toggleFavourite: (itemId: string, date: string, scope: 'dashboard' | 'dayDetail') => Promise<void>
@@ -323,4 +332,4 @@ export const useDailyLogStore = create<DailyLogState>((set, get) => ({
   },
 }))
 
-export type { MealItem, MealSlot, DashboardData, WeightEntry, DaySummary, HistoryTargets, MealItemUpdate }
+export type { Basis, MealItem, MealSlot, DashboardData, WeightEntry, DaySummary, HistoryTargets, MealItemUpdate }

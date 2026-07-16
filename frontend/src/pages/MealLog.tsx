@@ -164,17 +164,17 @@ export default function MealLog() {
         dietary_preference: profile?.dietary_preference,
         primary_cuisine: profile?.primary_cuisine,
       })
-      const refined: ReviewItem[] = data.items.map((it: Omit<ReviewItem, 'user_edited_fields'>, i: number) => ({
-        ...it,
-        user_edited_fields: items[i]?.user_edited_fields || [],
-      }))
-      const changedIndices = refined
-        .map((it, i) => (Math.round(it.calories) !== Math.round(items[i]?.calories ?? it.calories) ? i : -1))
-        .filter((i) => i >= 0)
-      setItems(refined)
-      saveCalibration(q, answer, refined)
-      if (changedIndices.length) {
-        setJustUpdated(changedIndices)
+      // Apply only the answered item — siblings the answer didn't target stay put.
+      const updated = data.items[q.item_index] as Omit<ReviewItem, 'user_edited_fields'> | undefined
+      const nextItems = items.map((it, i) =>
+        i === q.item_index && updated ? { ...it, ...updated, user_edited_fields: it.user_edited_fields } : it
+      )
+      const changed =
+        updated && Math.round(updated.calories) !== Math.round(items[q.item_index]?.calories ?? updated.calories)
+      setItems(nextItems)
+      saveCalibration(q, answer, nextItems)
+      if (changed) {
+        setJustUpdated([q.item_index])
         setTimeout(() => setJustUpdated([]), 2000)
       }
     } catch {
@@ -213,6 +213,46 @@ export default function MealLog() {
     }
   }
 
+  // Relative oil correction: step the assumed oil level one notch and re-run the
+  // same refine flow the clarifying questions use (field: "oil_usage_level").
+  const nudgeOil = async (i: number, direction: 'lighter' | 'oilier') => {
+    const current = items[i]?.basis?.oil_level || 'medium'
+    if (current === 'none') return // oil-free dish — nothing to nudge
+    const idx = OIL_LEVELS.indexOf(current)
+    const nextIdx = direction === 'lighter' ? idx - 1 : idx + 1
+    if (nextIdx < 0 || nextIdx >= OIL_LEVELS.length) return // already at the extreme
+    const newLevel = OIL_LEVELS[nextIdx]
+    setRenaming((r) => [...r, i])
+    try {
+      const editedByIndex: Record<string, string[]> = {}
+      items.forEach((it, j) => {
+        if (it.user_edited_fields.length) editedByIndex[String(j)] = it.user_edited_fields
+      })
+      const { data } = await api.post('/meals/analyze/refine', {
+        items: items.map(({ user_edited_fields: _uef, ...rest }) => rest),
+        answers: [{ item_index: i, field: 'oil_usage_level', answer: newLevel }],
+        user_edited_fields: editedByIndex,
+        dietary_preference: profile?.dietary_preference,
+        primary_cuisine: profile?.primary_cuisine,
+      })
+      // Apply only the nudged item — siblings the answer didn't target stay put.
+      const updated = data.items[i] as Omit<ReviewItem, 'user_edited_fields'> | undefined
+      if (updated) {
+        setItems((its) =>
+          its.map((it, j) =>
+            j === i ? { ...it, ...updated, user_edited_fields: it.user_edited_fields } : it
+          )
+        )
+      }
+      setJustUpdated([i])
+      setTimeout(() => setJustUpdated([]), 2000)
+    } catch {
+      // Best-effort — the existing estimate stays usable
+    } finally {
+      setRenaming((r) => r.filter((x) => x !== i))
+    }
+  }
+
   const defaultOption = (q: ClarifyingQuestion): string | null => {
     if (q.field === 'oil_usage_level' && profile?.oil_usage_level) {
       return q.options.find((o) => o.toLowerCase().includes(profile.oil_usage_level!)) || null
@@ -242,6 +282,7 @@ export default function MealLog() {
       user_edited_fields: item.user_edited_fields,
       is_estimate: true,
       source,
+      basis: item.basis,
     })))
     afterLog()
   }
@@ -603,6 +644,7 @@ export default function MealLog() {
               onChange={(updated) => setItems((its) => its.map((it, j) => (j === i ? updated : it)))}
               onDelete={() => setItems((its) => its.filter((_, j) => j !== i))}
               onRename={(oldName, newName) => handleRename(i, oldName, newName)}
+              onOilNudge={(direction) => nudgeOil(i, direction)}
             />
           ))}
           <div className="bg-primary-soft rounded-2xl p-3 text-center">

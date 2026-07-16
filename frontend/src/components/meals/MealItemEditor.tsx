@@ -144,6 +144,11 @@ export default function MealItemEditor({ item, onSave, onClose, onRename }: Prop
           <p className="-mt-3 mb-4 text-[11px] font-semibold text-primary animate-pulse">Recalculating nutrition…</p>
         )}
 
+        {/* What the estimate was based on (read-only) */}
+        {item.basis?.summary && (
+          <p className="-mt-2 mb-4 text-[11px] leading-snug text-muted-foreground">{item.basis.summary}</p>
+        )}
+
         {/* Portion */}
         <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">Portion</label>
         <div className="mt-1.5 mb-4 flex items-center gap-2">
