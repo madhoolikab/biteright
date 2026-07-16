@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react'
 import Card from '../shared/Card'
 import { MEAL_UNITS, scaleItem, unitLabel, type ScalableItem } from '../../lib/unitConversion'
+import type { Basis } from '../../store/dailyLogStore'
 
 export interface ReviewItem extends ScalableItem {
   item_name: string
   portion_description: string
   confidence: string
+  basis?: Basis | null
 }
 
 const MACRO_FIELDS = [
@@ -22,12 +24,16 @@ interface ReviewCardProps {
   onChange: (item: ReviewItem) => void
   onDelete: () => void
   onRename?: (oldName: string, newName: string) => void
+  onOilNudge?: (direction: 'lighter' | 'oilier') => void
 }
 
-export default function ReviewCard({ item, justUpdated = false, refining = false, onChange, onDelete, onRename }: ReviewCardProps) {
+export default function ReviewCard({ item, justUpdated = false, refining = false, onChange, onDelete, onRename, onOilNudge }: ReviewCardProps) {
   // Accumulated factor for user-edited fields since their last edit — applied
   // only if the user opts in via the "scale your edits too?" chip.
   const [pendingFactor, setPendingFactor] = useState(1)
+  // "How I estimated this" disclosure — collapsed by default so new users
+  // just see the one-line basis; detail-seekers tap to open.
+  const [showBasis, setShowBasis] = useState(false)
   // Tracks the last name we actually sent for re-estimation, so blur only
   // fires a refine call when the name really changed since the last commit.
   const committedName = useRef(item.item_name)
@@ -65,6 +71,14 @@ export default function ReviewCard({ item, justUpdated = false, refining = false
   const showScaleChip =
     Math.abs(pendingFactor - 1) > 0.01 &&
     item.user_edited_fields.some((f) => f !== 'quantity' && f !== 'item_name')
+
+  const ingredients = item.basis?.ingredients ?? []
+  const hasIngredients = ingredients.length > 0
+  const canNudgeOil = Boolean(onOilNudge && item.basis?.oil_level && item.basis.oil_level !== 'none')
+  // Prefer the concrete anchor the model put in the ingredient list (e.g. "~2 tsp oil");
+  // fall back to the assumed level word.
+  const oilAnchor =
+    ingredients.find((i) => /oil|ghee/i.test(i)) ?? `${item.basis?.oil_level ?? ''} oil`.trim()
 
   return (
     <Card className="space-y-3">
@@ -141,6 +155,71 @@ export default function ReviewCard({ item, justUpdated = false, refining = false
           <span className="text-[10px] font-semibold text-secondary ml-1">Updated</span>
         )}
       </div>
+
+      {/* "Show your work" — what the model saw and assumed, so the number can be trusted */}
+      {item.basis?.summary && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">{item.basis.summary}</p>
+          {(hasIngredients || canNudgeOil) && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowBasis((v) => !v)}
+                aria-expanded={showBasis}
+                className="w-full text-left text-xs font-semibold text-primary bg-primary-soft rounded-2xl px-3 py-2 active:scale-[0.98]"
+              >
+                {showBasis ? 'Hide details' : 'How I estimated this'}
+              </button>
+              {showBasis && (
+                <div className="rounded-2xl border border-border/60 p-3 space-y-3">
+                  {hasIngredients && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">What we accounted for</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.basis!.ingredients!.map((ing) => (
+                          <span key={ing} className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-foreground/80">{ing}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {canNudgeOil && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">Oil</p>
+                      <p className="text-xs text-muted-foreground">We counted {oilAnchor} in this estimate. Was yours…</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={refining}
+                          onClick={() => onOilNudge?.('lighter')}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-card border border-border/60 text-primary active:scale-[0.96] transition-transform disabled:opacity-50"
+                        >
+                          lighter
+                        </button>
+                        <button
+                          type="button"
+                          disabled={refining}
+                          onClick={() => setShowBasis(false)}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-card border border-border/60 text-muted-foreground active:scale-[0.96] transition-transform disabled:opacity-50"
+                        >
+                          about right
+                        </button>
+                        <button
+                          type="button"
+                          disabled={refining}
+                          onClick={() => onOilNudge?.('oilier')}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-card border border-border/60 text-primary active:scale-[0.96] transition-transform disabled:opacity-50"
+                        >
+                          oilier
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {showScaleChip && (
         <button

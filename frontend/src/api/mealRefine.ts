@@ -1,4 +1,5 @@
 import api from './client'
+import type { Basis } from '../store/dailyLogStore'
 
 interface RefineableItem {
   item_name: string
@@ -14,6 +15,7 @@ interface RefineableItem {
   fat_g: number
   fibre_g: number
   confidence?: string
+  basis?: Basis | null
 }
 
 interface RefineProfile {
@@ -35,6 +37,7 @@ export interface RefinedItem {
   fat_g: number
   fibre_g: number
   confidence: string
+  basis?: Basis | null
 }
 
 // Re-estimates nutrition for a single item after the user corrects its dish name,

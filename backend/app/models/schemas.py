@@ -62,6 +62,13 @@ class CalculateTargetsResponse(BaseModel):
 
 # --- Meals ---
 
+class MealItemBasis(BaseModel):
+    """The model's 'show your work' for a dish: what it saw and assumed."""
+    summary: Optional[str] = None
+    ingredients: list[str] = []
+    oil_level: Optional[str] = None
+
+
 class MealItemCreate(BaseModel):
     log_date: date
     meal_type: str = Field(pattern="^(breakfast|lunch|snack|dinner)$")
@@ -80,6 +87,7 @@ class MealItemCreate(BaseModel):
     user_edited_fields: list[str] = []
     is_estimate: bool = True
     source: str = Field(default="manual", pattern="^(photo|manual|favourite|voice|text)$")
+    basis: Optional[dict] = None
 
 
 class MealItemUpdate(BaseModel):
@@ -96,6 +104,7 @@ class MealItemUpdate(BaseModel):
     calorie_low: Optional[float] = None
     calorie_high: Optional[float] = None
     user_edited_fields: Optional[list[str]] = None
+    basis: Optional[dict] = None
 
 
 class MealItemResponse(BaseModel):
@@ -117,6 +126,7 @@ class MealItemResponse(BaseModel):
     is_estimate: bool
     is_favourite: bool
     source: str
+    basis: Optional[dict] = None
 
 
 class MealAnalyzeRequest(BaseModel):
@@ -148,6 +158,7 @@ class AnalyzedFoodItem(BaseModel):
     fat_g: float
     fibre_g: float
     confidence: str = "medium"
+    basis: Optional[MealItemBasis] = None
 
 
 class ClarifyingQuestion(BaseModel):
