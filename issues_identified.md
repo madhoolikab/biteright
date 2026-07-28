@@ -26,3 +26,4 @@ to do:
 ---
 
 24. [ ] Design choice: get possible close alternatives also as a part of the gemini response, with the confidence? And show them as the alternatives that user can click on to replace the primary one shown.
+25. [ ] Give the meal-analysis calls their own longer axios timeout. `frontend/src/api/client.ts` now sets a 30s default timeout on the whole instance, which is right for the fast CRUD routes. But `POST /meals/analyze` (`MealLog.tsx:91`) and `/meals/analyze/refine` (`MealLog.tsx:160`, `MealLog.tsx:231`, `api/mealRefine.ts:52`) upload a base64 photo, then wait on Gemini, then possibly on a cold Railway container. That chain could cross 30s and get aborted mid-flight, so the user sees a failure for a request that would have succeeded. Fix is to pass `{ timeout: 90000 }` as the per-request config on just those calls and leave the 30s default alone. Watch the console during the first real deployed photo logs to see whether it actually trips.
