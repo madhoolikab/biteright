@@ -8,7 +8,7 @@ import Card from '../components/shared/Card'
 export default function Profile() {
   const navigate = useNavigate()
   const { profile, fetchProfile, updateProfile } = useProfileStore()
-  const { signOut } = useAuthStore()
+  const { signOut, user } = useAuthStore()
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
@@ -61,24 +61,32 @@ export default function Profile() {
         <h3 className="font-semibold text-sm mb-3">Personal Details</h3>
         <div className="divide-y divide-border">
           {fields.map(({ key, label, value, unit }) => (
-            <div key={key} className="flex items-center justify-between py-3">
-              <span className="text-muted-foreground text-sm">{label}</span>
-              {editing === key ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type={typeof value === 'number' ? 'number' : 'text'}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    className="w-20 px-2 py-1 border border-primary rounded text-right text-sm focus:outline-none"
-                    autoFocus
-                  />
-                  {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
-                  <button onClick={saveEdit} className="text-primary text-sm font-medium">Save</button>
+            <div key={key}>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-muted-foreground text-sm">{label}</span>
+                {editing === key ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type={typeof value === 'number' ? 'number' : 'text'}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="w-20 px-2 py-1 border border-primary rounded text-right text-sm focus:outline-none"
+                      autoFocus
+                    />
+                    {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+                    <button onClick={saveEdit} className="text-primary text-sm font-medium">Save</button>
+                  </div>
+                ) : (
+                  <button onClick={() => startEdit(key, value)} className="text-sm font-medium">
+                    {value}{unit ? ` ${unit}` : ''}
+                  </button>
+                )}
+              </div>
+              {key === 'name' && user?.email && (
+                <div className="flex items-center justify-between py-3 border-t border-border">
+                  <span className="text-muted-foreground text-sm">Email</span>
+                  <span className="text-sm font-medium text-muted-foreground">{user.email}</span>
                 </div>
-              ) : (
-                <button onClick={() => startEdit(key, value)} className="text-sm font-medium">
-                  {value}{unit ? ` ${unit}` : ''}
-                </button>
               )}
             </div>
           ))}

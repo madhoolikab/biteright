@@ -19,7 +19,7 @@ interface AuthState {
   setOnboarded: (value: boolean) => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
   isLoading: true,
@@ -41,9 +41,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: false })
 
     supabase.auth.onAuthStateChange((event, session) => {
+      const previousUserId = get().user?.id
       set({ session, user: session?.user ?? null })
 
-      if (event === 'SIGNED_IN' && session) {
+      if (event === 'SIGNED_IN' && session && session.user.id !== previousUserId) {
         set({ isLoading: true })
         api.get('/profile/')
           .then(({ data }) => set({ isOnboarded: data.onboarding_completed }))
