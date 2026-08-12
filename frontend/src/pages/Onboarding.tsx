@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import Button from '../components/shared/Button'
@@ -82,8 +83,9 @@ export default function Onboarding() {
           fat_target_g: targets.fat_target_g,
           fibre_target_g: targets.fibre_target_g,
         })
-      } catch {
+      } catch (err) {
         // Fallback client-side calculation
+        console.error('[onboarding] calculate-targets failed', err)
       } finally {
         setIsCalculating(false)
       }
@@ -101,15 +103,20 @@ export default function Onboarding() {
   }
 
   const finish = async () => {
-    // oil_usage_level / portion_calibration are populated progressively
-    // during meal logging, not collected during onboarding
-    await createProfile({
-      ...(data as OnboardingData),
-      oil_usage_level: null,
-      portion_calibration: null,
-    })
-    setOnboarded(true)
-    navigate('/')
+    try {
+      // oil_usage_level / portion_calibration are populated progressively
+      // during meal logging, not collected during onboarding
+      await createProfile({
+        ...(data as OnboardingData),
+        oil_usage_level: null,
+        portion_calibration: null,
+      })
+      setOnboarded(true)
+      navigate('/')
+    } catch (err) {
+      console.error('[onboarding] create profile failed', err)
+      toast.error("Couldn't save your profile — give it another try")
+    }
   }
 
   // Keep ref pointing at latest next() so closures never go stale

@@ -33,7 +33,7 @@ async def create_profile(
     data = profile.model_dump()
     data["user_id"] = user_id
     data["onboarding_completed"] = True
-    result = db.table("profiles").insert(data).execute()
+    result = db.table("profiles").upsert(data, on_conflict="user_id").execute()
     return result.data[0]
 
 

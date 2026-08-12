@@ -40,8 +40,20 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     set({ isLoading: false })
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       set({ session, user: session?.user ?? null })
+
+      if (event === 'SIGNED_IN' && session) {
+        set({ isLoading: true })
+        api.get('/profile/')
+          .then(({ data }) => set({ isOnboarded: data.onboarding_completed }))
+          .catch(() => set({ isOnboarded: false }))
+          .finally(() => set({ isLoading: false }))
+      }
+
+      if (event === 'SIGNED_OUT') {
+        set({ isOnboarded: false })
+      }
     })
   },
 
