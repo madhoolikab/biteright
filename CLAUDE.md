@@ -59,7 +59,7 @@ frontend/
       useToday.ts        — today string, week start, isEvening()
       useSpeechInput.ts   — Web Speech API (en-IN) dictation; mic buttons simply don't render on unsupported browsers
     store/
-      authStore.ts     — Supabase session, Google sign-in, onboarding check
+      authStore.ts     — Supabase session, Google sign-in, email/password sign-up + sign-in + password reset, onboarding check
       profileStore.ts  — profile CRUD, target calculation
       dailyLogStore.ts — Today's `dashboard` (with current_streak) + separate `history`/`dayDetail` slices for the Log view (fetchHistory, fetchDayDetail, updateMealItem, deleteDayMealItem, addDayWater, removeDayWater, logDayWeight) — kept separate so browsing past days never clobbers Today
     components/
@@ -71,7 +71,8 @@ frontend/
       format.ts          — fmtApprox() for ~kcal display, greeting() for time-based salutation
       unitConversion.ts  — client-side mirror of backend unit_conversion.py for instant rescale on quantity/unit change
     pages/
-      Login.tsx        — Google sign-in
+      Login.tsx        — Google sign-in, plus email/password sign-in/sign-up with a "forgot password" mode; redirects away if already signed in
+      ResetPassword.tsx — route /reset-password: lands here from the password-reset email, sets a new password if the recovery session is valid
       Onboarding.tsx   — 10-step stepper with validation; targets step shows weeks-to-goal for lose/gain
       Dashboard.tsx    — greeting + real StreakBadge (current_streak), CalorieCard, LogDuoCard, HydrationRing, PlateCards (today only)
       MealLog.tsx      — Photo / Describe / Recent & Faves tabs, all through POST /meals/analyze; clarifying-question chips; mic input on Describe and as photo caption. Accepts `?date=YYYY-MM-DD` to log to a past day (defaults to today; returns to /history/{date} when set)
@@ -154,7 +155,7 @@ The UI was redesigned from the Plate Pal project. All new UI work must continue 
 
 ## Auth flow
 
-1. Frontend uses Supabase JS SDK for Google OAuth only
+1. Frontend uses Supabase JS SDK for auth. Two paths: Google OAuth, or email/password (sign-up with email confirmation, sign-in, and forgot/reset password via `/reset-password`) — both produce the same kind of Supabase session, so the rest of the app doesn't care which one was used
 2. Supabase session JWT is attached to all API calls via Axios interceptor
 3. Backend validates JWT via Supabase SDK (`db.auth.get_user`), extracts user_id from the returned user object
 4. Frontend talks to Supabase ONLY for auth — all data goes through FastAPI

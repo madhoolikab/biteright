@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { useAuthStore } from './store/authStore'
 import AppShell from './components/layout/AppShell'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import MealLog from './pages/MealLog'
@@ -45,6 +46,7 @@ export default function App() {
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<AuthGuard><AppShell /></AuthGuard>}>
           <Route path="/" element={<Dashboard />} />

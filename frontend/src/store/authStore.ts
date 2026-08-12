@@ -10,6 +10,11 @@ interface AuthState {
   isOnboarded: boolean
   initialize: () => Promise<void>
   signInWithGoogle: () => Promise<void>
+  signInWithPassword: (email: string, password: string) => Promise<void>
+  signUpWithPassword: (email: string, password: string) => Promise<{ needsEmailConfirmation: boolean }>
+  resendConfirmationEmail: (email: string) => Promise<void>
+  resetPasswordForEmail: (email: string) => Promise<void>
+  updatePassword: (newPassword: string) => Promise<void>
   signOut: () => Promise<void>
   setOnboarded: (value: boolean) => void
 }
@@ -45,6 +50,41 @@ export const useAuthStore = create<AuthState>((set) => ({
       provider: 'google',
       options: { redirectTo: window.location.origin },
     })
+  },
+
+  signInWithPassword: async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+  },
+
+  signUpWithPassword: async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) throw error
+    // Supabase returns a fake "new user" (empty identities) instead of an error
+    // when the email is already registered under another provider, to avoid
+    // leaking which emails exist. No confirmation email is actually sent.
+    // To make it explicit to the user we show that info on the register page and ask user to login with Google.
+    if (data.user && data.user.identities?.length === 0) {
+      throw new Error('ACCOUNT_EXISTS_OTHER_PROVIDER')
+    }
+    return { needsEmailConfirmation: !data.session }
+  },
+
+  resendConfirmationEmail: async (email) => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    if (error) throw error
+  },
+
+  resetPasswordForEmail: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) throw error
+  },
+
+  updatePassword: async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) throw error
   },
 
   signOut: async () => {
