@@ -413,7 +413,7 @@ function OptionCard({ selected, onClick, children }: { selected: boolean; onClic
   )
 }
 
-function NumberInput({ label, value, onChange, unit }: { label: string; value?: number; onChange: (v: number) => void; unit: string }) {
+function NumberInput({ label, value, onChange, unit }: { label: string; value?: number; onChange: (v: number | undefined) => void; unit: string }) {
   return (
     <div className="flex items-center gap-3">
       <label className="text-sm text-muted-foreground w-24 shrink-0">{label}</label>
@@ -421,7 +421,10 @@ function NumberInput({ label, value, onChange, unit }: { label: string; value?: 
         <input
           type="number"
           value={value ?? ''}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(e) => {
+            const raw = e.target.value
+            onChange(raw === '' ? undefined : Number(raw))
+          }}
           className="w-full px-4 py-3 border border-border rounded-2xl bg-input focus:outline-none focus:border-primary pr-12"
         />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{unit}</span>
