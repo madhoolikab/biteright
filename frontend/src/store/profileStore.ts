@@ -60,7 +60,7 @@ interface ProfileState {
   createProfile: (data: Omit<Profile, 'id' | 'user_id' | 'onboarding_completed'>) => Promise<void>
 }
 
-export const useProfileStore = create<ProfileState>((set) => ({
+export const useProfileStore = create<ProfileState>((set, get) => ({
   profile: null,
   isLoading: false,
 
@@ -82,6 +82,7 @@ export const useProfileStore = create<ProfileState>((set) => ({
       })
       return
     }
+    if (get().profile) return
     set({ isLoading: true })
     try {
       const { data } = await api.get('/profile/')

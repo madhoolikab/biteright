@@ -2,6 +2,13 @@ import { create } from 'zustand'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import api from '../api/client'
+import { useProfileStore } from './profileStore'
+import { useDailyLogStore } from './dailyLogStore'
+
+function resetUserScopedStores() {
+  useProfileStore.setState({ profile: null })
+  useDailyLogStore.setState({ dashboard: null, history: [], historyTargets: null, dayDetail: null })
+}
 
 interface AuthState {
   session: Session | null
@@ -46,6 +53,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (event === 'SIGNED_IN' && session && session.user.id !== previousUserId) {
         set({ isLoading: true })
+        resetUserScopedStores()
         api.get('/profile/')
           .then(({ data }) => set({ isOnboarded: data.onboarding_completed }))
           .catch(() => set({ isOnboarded: false }))
@@ -103,6 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut()
     set({ session: null, user: null, isOnboarded: false })
+    resetUserScopedStores()
   },
 
   setOnboarded: (value) => set({ isOnboarded: value }),

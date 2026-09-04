@@ -289,6 +289,7 @@ export const useDailyLogStore = create<DailyLogState>((set, get) => ({
       set({ dashboard: MOCK_DASHBOARD, isLoading: false })
       return
     }
+    if (get().dashboard?.log_date === date) return
     set({ isLoading: true })
     try {
       const { data } = await api.get(`/dashboard/today?log_date=${date}`)

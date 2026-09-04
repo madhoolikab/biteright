@@ -37,8 +37,8 @@ export default function HistoryLog() {
   useEffect(() => {
     fetchHistory(30)
     fetchProfile()
-    if (!dashboard) fetchDashboard(format(new Date(), 'yyyy-MM-dd'))
-  }, [fetchHistory, fetchProfile, fetchDashboard, dashboard])
+    fetchDashboard(todayIso)
+  }, [fetchHistory, fetchProfile, fetchDashboard, todayIso])
 
   const goal = historyTargets?.calorie_target ?? dashboard?.calorie_target ?? 1850
   const byDate = useMemo(() => {
