@@ -144,6 +144,13 @@ class MealAnalyzeRequest(BaseModel):
         return self
 
 
+class AlternativeCandidate(BaseModel):
+    """A plausible alternative identification for an item whose dish is genuinely ambiguous."""
+    item_name: str
+    confidence: str = "medium"
+    note: Optional[str] = None
+
+
 class AnalyzedFoodItem(BaseModel):
     item_name: str
     portion_description: str
@@ -159,6 +166,7 @@ class AnalyzedFoodItem(BaseModel):
     fibre_g: float
     confidence: str = "medium"
     basis: Optional[MealItemBasis] = None
+    alternatives: list[AlternativeCandidate] = []
 
 
 class ClarifyingQuestion(BaseModel):
