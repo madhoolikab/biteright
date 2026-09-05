@@ -257,3 +257,17 @@ cd frontend && npx tsc --noEmit
 # Eval tool (meal-photo labeling + accuracy metrics)
 uvicorn eval.server:app --port 8100 --reload
 ```
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `madhoolikab/biteright` (uses the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
