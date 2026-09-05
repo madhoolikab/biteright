@@ -144,14 +144,9 @@ class MealAnalyzeRequest(BaseModel):
         return self
 
 
-class AlternativeCandidate(BaseModel):
-    """A plausible alternative identification for an item whose dish is genuinely ambiguous."""
-    item_name: str
-    confidence: str = "medium"
-    note: Optional[str] = None
-
-
-class AnalyzedFoodItem(BaseModel):
+class FoodItemEstimate(BaseModel):
+    """The full nutritional estimate for one dish identification — same shape whether
+    it's the primary guess or an alternative, so acting on either needs no further model call."""
     item_name: str
     portion_description: str
     quantity: float = 1
@@ -166,6 +161,14 @@ class AnalyzedFoodItem(BaseModel):
     fibre_g: float
     confidence: str = "medium"
     basis: Optional[MealItemBasis] = None
+
+
+class AlternativeCandidate(FoodItemEstimate):
+    """A plausible alternative identification for an item whose dish is genuinely ambiguous."""
+    note: Optional[str] = None
+
+
+class AnalyzedFoodItem(FoodItemEstimate):
     alternatives: list[AlternativeCandidate] = []
 
 
