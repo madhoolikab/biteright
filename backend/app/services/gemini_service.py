@@ -28,7 +28,30 @@ ITEMS_JSON_SCHEMA = """{
         "summary": "one short plain-language line: what you identified + main composition + oil level, e.g. 'ridge gourd, tomato-onion base, moderate oil'. Omit any oil mention for oil-free dishes",
         "ingredients": ["short list of the assumed components; for cooked-in-oil dishes include one oil entry with a concrete anchor, e.g. 'ridge gourd', 'tomato', 'onion', '~2 tsp oil'. Omit the oil entry for oil-free dishes"],
         "oil_level": "light" | "medium" | "generous" | "none"
-      }
+      },
+      "alternatives": [
+        {
+          "item_name": "string - a plausible alternative dish this could be instead",
+          "portion_description": "string - portion in household terms for THIS alternative dish",
+          "quantity": number,
+          "unit": "piece" | "cup" | "tbsp" | "tsp" | "gram" | "ml" | "glass",
+          "estimated_grams": number,
+          "calories": number,
+          "calorie_low": number,
+          "calorie_high": number,
+          "carbs_g": number,
+          "protein_g": number,
+          "fat_g": number,
+          "fibre_g": number,
+          "confidence": "high" | "medium" | "low",
+          "basis": {
+            "summary": "same 'summary' rules as the primary item's basis, but for this alternative dish",
+            "ingredients": ["same rules as the primary item's basis.ingredients, but for this alternative dish"],
+            "oil_level": "light" | "medium" | "generous" | "none"
+          },
+          "note": "optional short reason the alternative is plausible, e.g. 'similar color and consistency'"
+        }
+      ]
     }
   ],
   "meal_description": "Brief one-line description of the overall meal",
@@ -55,6 +78,7 @@ For each item, provide:
 - carbs_g, protein_g, fat_g, fibre_g: grams
 - confidence: "high", "medium", or "low"
 - basis: show your work so the user can trust the number. "summary" is one short, plain-language line naming what you identified and the assumptions behind the estimate — the main ingredients, the rough composition (e.g. tomato-onion base vs. coconut base), and, for cooked-in-oil dishes, the oil level (this makes clear the oil is already counted in the calories). "ingredients" lists those components in common Indian terms. "oil_level" is your assumed oil use: "light", "medium", or "generous". For dishes made with NO added cooking oil or ghee — boiled, steamed, or raw items (boiled egg white, plain idli, ragi java/porridge, curd, fruit, most beverages) — set "oil_level": "none", do NOT include an oil entry in "ingredients", and do NOT mention oil in "summary". For all other (oil-cooked) dishes, "ingredients" MUST include one entry for the oil/ghee you assumed with a concrete anchor (e.g. "~2 tsp oil"). No jargon, no Western renaming.
+- alternatives: a short list of other dishes this could plausibly be instead of your primary identification. Populate this ONLY when the dish is genuinely visually or descriptively ambiguous with another common Indian dish (e.g. sambar vs. rasam, dosa vs. uttapam, one dal vs. another). Return an empty list [] for items you are confidently able to identify — do not pad this with unlikely or generic guesses just to fill it in. At most 2 alternatives per item. Each alternative must carry a COMPLETE independent estimate for that dish — portion_description, quantity, unit, estimated_grams, calories, calorie_low/high, all four macros, confidence, and basis — computed exactly as you would for a primary item of that dish, at the same real-world portion size you observed (not copied from the primary item's numbers, since a different dish has different macros for the same portion). This lets the app switch an item to an alternative later without calling you again. note is optional.
 
 Important rules:
 1. Use common Indian food names, not anglicized versions
@@ -89,6 +113,7 @@ Rules:
 4. Return "clarifying_questions": [] — do not ask anything further
 5. If an answer's field is "item_name", the item was misidentified — the item_name in the previous analysis JSON already reflects the corrected dish. Re-derive estimated_grams, calories, calorie_low/high, and all macros for that dish from scratch (keep the same quantity/unit unless clearly wrong for the new dish) rather than nudging the old numbers
 6. Re-emit "basis" for any item whose numbers changed so it stays consistent with the new estimate. When an answer's field is "oil_usage_level", update that item's basis.oil_level to match, adjust the oil entry in basis.ingredients (e.g. "~1 tsp oil" vs "~1 tbsp oil"), and reword basis.summary accordingly. Leave basis unchanged for items you did not touch.
+7. If an answer resolves the ambiguity behind an item's "alternatives" (e.g. the user confirms it's sambar, not rasam), clear that item's alternatives to []. Otherwise leave alternatives unchanged.
 
 Respond ONLY with valid JSON in this exact format:
 """
@@ -145,16 +170,38 @@ def _drop_moot_oil_questions(result: MealAnalysisResponse) -> MealAnalysisRespon
     return result
 
 
+# Fields with no default on AlternativeCandidate — anything missing one can't build a
+# valid item and would otherwise fail the whole response's validation over one bad alternative.
+_REQUIRED_ALTERNATIVE_FIELDS = {
+    "item_name", "portion_description", "estimated_grams",
+    "calories", "carbs_g", "protein_g", "fat_g", "fibre_g",
+}
+
+
+def _drop_malformed_alternatives(data: dict) -> dict:
+    """The model occasionally omits a field on a nested alternative despite the prompt's
+    schema. Drop just that alternative in code rather than letting one bad nested object
+    fail validation for the whole (otherwise-correct) analysis."""
+    for item in data.get("items", []) if isinstance(data, dict) else []:
+        if isinstance(item, dict) and isinstance(item.get("alternatives"), list):
+            item["alternatives"] = [
+                alt
+                for alt in item["alternatives"]
+                if isinstance(alt, dict) and _REQUIRED_ALTERNATIVE_FIELDS.issubset(alt.keys())
+            ]
+    return data
+
+
 def _parse_response(text: str) -> MealAnalysisResponse:
     try:
-        data = json.loads(text)
+        data = _drop_malformed_alternatives(json.loads(text))
         return _drop_moot_oil_questions(MealAnalysisResponse(**data))
     except (json.JSONDecodeError, ValueError):
         pass
 
     json_match = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL)
     if json_match:
-        data = json.loads(json_match.group(1))
+        data = _drop_malformed_alternatives(json.loads(json_match.group(1)))
         return _drop_moot_oil_questions(MealAnalysisResponse(**data))
 
     raise ValueError("Could not parse Gemini response as JSON")
@@ -216,6 +263,11 @@ async def refine_meal_analysis(req: MealRefineRequest) -> MealAnalysisResponse:
             for field in fields:
                 if hasattr(result.items[idx], field):
                     setattr(result.items[idx], field, getattr(req.items[idx], field))
+    # Hard guarantee: an item_index whose identity was just resolved by a clarifying
+    # answer can't still be ambiguous, even if the model ignores rule 7
+    for ans in req.answers:
+        if ans.field == "item_name" and ans.item_index < len(result.items):
+            result.items[ans.item_index].alternatives = []
     result.clarifying_questions = []
     return result
 

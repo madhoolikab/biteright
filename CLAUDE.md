@@ -43,7 +43,7 @@ backend/
       insights.py      — GET /weekly (DORMANT — cached Gemini generation, no longer called by the frontend)
     services/
       nutrition_calc.py — Mifflin-St Jeor BMR, activity multipliers, macro splits, weeks_to_goal
-      gemini_service.py — unified photo+text meal analysis (quantity/unit/calorie range/clarifying questions), refine_meal_analysis, weekly insight generation (10-rule warm prompt, fallback template — dormant, see insights.py note)
+      gemini_service.py — unified photo+text meal analysis (quantity/unit/calorie range/clarifying questions/alternative candidates for ambiguous items), refine_meal_analysis, weekly insight generation (10-rule warm prompt, fallback template — dormant, see insights.py note)
       unit_conversion.py — Indian household unit→grams table (katori, tbsp, bowl…) and scale_item() for proportional macro rescaling that skips user-edited fields
   migrations/
     001_create_tables.sql — profiles, daily_logs, meal_items, water_logs, weight_logs, weekly_insights
