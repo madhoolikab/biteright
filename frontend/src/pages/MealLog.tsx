@@ -100,6 +100,13 @@ export default function MealLog() {
         ...it,
         calorie_low: it.calorie_low || it.calories * 0.85,
         calorie_high: it.calorie_high || it.calories * 1.15,
+        // Same zero-fallback as the primary item — an alternative can equally arrive with
+        // calorie_low/high omitted, and swapping to it should never show "~0-0 kcal".
+        alternatives: (it.alternatives ?? []).map((alt) => ({
+          ...alt,
+          calorie_low: alt.calorie_low || alt.calories * 0.85,
+          calorie_high: alt.calorie_high || alt.calories * 1.15,
+        })),
         user_edited_fields: [],
       })))
       setQuestions(data.clarifying_questions || [])
