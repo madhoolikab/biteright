@@ -3,11 +3,30 @@ import Card from '../shared/Card'
 import { MEAL_UNITS, scaleItem, unitLabel, type ScalableItem } from '../../lib/unitConversion'
 import type { Basis } from '../../store/dailyLogStore'
 
+export interface AlternativeCandidate {
+  item_name: string
+  portion_description: string
+  quantity: number
+  unit: string
+  estimated_grams: number
+  calories: number
+  calorie_low: number
+  calorie_high: number
+  carbs_g: number
+  protein_g: number
+  fat_g: number
+  fibre_g: number
+  confidence: string
+  basis?: Basis | null
+  note?: string | null
+}
+
 export interface ReviewItem extends ScalableItem {
   item_name: string
   portion_description: string
   confidence: string
   basis?: Basis | null
+  alternatives?: AlternativeCandidate[]
 }
 
 const MACRO_FIELDS = [
@@ -46,6 +65,93 @@ export default function ReviewCard({ item, justUpdated = false, refining = false
   const editField = (field: keyof ReviewItem & string, value: number) => {
     onChange({ ...item, [field]: value, user_edited_fields: markEdited(field) })
     if (field !== 'quantity') setPendingFactor(1)
+  }
+
+  // Swap this item's identity for an alternative candidate. Alternatives already carry a
+  // complete estimate (see backend AlternativeCandidate), so this needs no model call.
+  // Only item_name is marked edited — same convention as a manual rename — so a later
+  // refine call won't silently revert the swap, while quantity/unit changes still rescale
+  // the new macros/calories proportionally exactly as they would for the original guess.
+  const swapAlternative = (alt: AlternativeCandidate) => {
+    // Rescale the alternative onto the item's *current* quantity — which the user may have
+    // already adjusted before spotting the mis-identification — rather than resetting to the
+    // alternative's own default portion. Only do this when the units match: cross-unit scaling
+    // for an unmapped unit like "piece" derives grams-per-unit from the *other* dish's own
+    // quantity/grams, which doesn't transfer across two different dishes. When units differ,
+    // fall back to the alternative's own portion as-is rather than guess a distorted number.
+    const portionPreserved = alt.unit === item.unit
+    const altAtCurrentPortion = portionPreserved
+      ? scaleItem({ ...alt, user_edited_fields: [] }, item.quantity, item.unit)
+      : alt
+
+    const edited = new Set(item.user_edited_fields)
+    // Never clobber a field the user already hand-corrected — same invariant scaleItem
+    // honors — so a prior correction survives an identity swap instead of silently
+    // reverting to the alternative's raw estimate. Only honor this when the portion itself
+    // was preserved across the swap (see above): a correction calibrated for the old
+    // dish/portion doesn't carry over once the cross-unit fallback silently changes portion.
+    const keep = <F extends 'carbs_g' | 'protein_g' | 'fat_g' | 'fibre_g'>(field: F) =>
+      portionPreserved && edited.has(field) ? item[field] : altAtCurrentPortion[field]
+
+    // calorie_low/high have no edit UI of their own, so they can never be "user-edited" —
+    // but if the exact calories value was hand-corrected (and the portion carried over),
+    // keep the range's width proportional to that correction instead of pairing the old
+    // (kept) calorie figure with the new dish's unrelated range.
+    const keptCalories = portionPreserved && edited.has('calories') ? item.calories : altAtCurrentPortion.calories
+    const rangeRatio = altAtCurrentPortion.calories ? keptCalories / altAtCurrentPortion.calories : 1
+
+    // A macro/calorie correction that didn't carry over (cross-unit fallback) is stale —
+    // drop its edited flag too, so the EditedDot doesn't claim the new dish's raw estimate
+    // as "your correction" and a later refine call doesn't protect a value we already discarded.
+    const staleEditFields = new Set(['calories', 'carbs_g', 'protein_g', 'fat_g', 'fibre_g'])
+    const carriedEditedFields = portionPreserved
+      ? item.user_edited_fields
+      : item.user_edited_fields.filter((f) => !staleEditFields.has(f))
+
+    // Keep the swapped-away identification around as a way to swap back, and drop the
+    // newly-selected one from the remaining options (matched by reference, not name, so
+    // duplicate alternative names from the model can't collide).
+    const previousAsAlternative: AlternativeCandidate = {
+      item_name: item.item_name,
+      portion_description: item.portion_description,
+      quantity: item.quantity,
+      unit: item.unit,
+      estimated_grams: item.estimated_grams,
+      calories: item.calories,
+      calorie_low: item.calorie_low,
+      calorie_high: item.calorie_high,
+      carbs_g: item.carbs_g,
+      protein_g: item.protein_g,
+      fat_g: item.fat_g,
+      fibre_g: item.fibre_g,
+      confidence: item.confidence,
+      basis: item.basis,
+    }
+    const remainingAlternatives = (item.alternatives ?? []).filter((a) => a !== alt)
+
+    committedName.current = alt.item_name
+    setPendingFactor(1)
+    onChange({
+      ...item,
+      item_name: altAtCurrentPortion.item_name,
+      portion_description: altAtCurrentPortion.portion_description,
+      quantity: altAtCurrentPortion.quantity,
+      unit: altAtCurrentPortion.unit,
+      estimated_grams: altAtCurrentPortion.estimated_grams,
+      calories: keptCalories,
+      calorie_low: Math.round(altAtCurrentPortion.calorie_low * rangeRatio * 10) / 10,
+      calorie_high: Math.round(altAtCurrentPortion.calorie_high * rangeRatio * 10) / 10,
+      carbs_g: keep('carbs_g'),
+      protein_g: keep('protein_g'),
+      fat_g: keep('fat_g'),
+      fibre_g: keep('fibre_g'),
+      confidence: altAtCurrentPortion.confidence,
+      basis: altAtCurrentPortion.basis,
+      alternatives: [...remainingAlternatives, previousAsAlternative],
+      user_edited_fields: carriedEditedFields.includes('item_name')
+        ? carriedEditedFields
+        : [...carriedEditedFields, 'item_name'],
+    })
   }
 
   const changePortion = (quantity: number, unit?: string) => {
@@ -119,6 +225,30 @@ export default function ReviewCard({ item, justUpdated = false, refining = false
           </button>
         </div>
       </div>
+
+      {item.alternatives && item.alternatives.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">Could also be</span>
+          {item.alternatives.map((alt, altIndex) => (
+            <button
+              key={altIndex}
+              type="button"
+              disabled={refining}
+              onClick={() => swapAlternative(alt)}
+              title={alt.note || undefined}
+              className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-foreground/80 active:scale-[0.96] transition-transform hover:bg-primary-soft hover:text-primary disabled:opacity-50"
+            >
+              {alt.item_name}
+              {/* Surface the alternative's own portion whenever picking it would silently change
+                  the portion (cross-unit swap can't be scaled onto the current quantity/unit —
+                  see swapAlternative), so the size change is visible before tapping, not after. */}
+              {alt.unit !== item.unit && (
+                <span className="font-normal text-muted-foreground"> · {alt.portion_description}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Portion: quantity stepper + unit */}
       <div className="flex items-center gap-2">
